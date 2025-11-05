@@ -2,7 +2,9 @@
 
 A modern web-based GUI tool to manage and clean Claude Code projects. Built with Vue 3, Vite, and Node.js. Helps you clean up session data, identify orphaned projects, and manage your Claude Code configuration.
 
-⚠️ **DISCLAIMER**: This tool modifies Claude Code's configuration and data files. While all deleted items are moved to your system trash (and can be recovered), **use this tool carefully**. We are not responsible for any data loss or issues that may occur from using this tool. Always ensure you have backups before performing bulk operations, and verify your actions before confirming deletions.
+> ⚠️ **DISCLAIMER**: This tool modifies Claude Code's configuration and data files. While all deleted items are moved to your system trash (and can be recovered), **use this tool carefully**. We are not responsible for any data loss or issues that may occur from using this tool. Always ensure you have backups before performing bulk operations, and verify your actions before confirming deletions.
+
+---
 
 ## Features
 
@@ -30,6 +32,8 @@ A modern web-based GUI tool to manage and clean Claude Code projects. Built with
 - **Easy Restoration**: Restore any previous backup instantly with one click
 - **Fixed UI**: Header and sidebar stay fixed while content scrolls for better usability
 
+---
+
 ## Tech Stack
 
 - **Frontend**: Vue 3 with Composition API
@@ -37,6 +41,8 @@ A modern web-based GUI tool to manage and clean Claude Code projects. Built with
 - **Backend**: Express.js with ES modules
 - **File Operations**: trash-cli for safe deletion
 - **Platform Support**: macOS and Linux
+
+---
 
 ## Installation
 
@@ -66,6 +72,8 @@ Now you can start CC-Cleaner from anywhere with:
 ccc
 ```
 
+---
+
 ## Usage
 
 ### Development Mode
@@ -94,6 +102,8 @@ npm start
 
 Then open http://localhost:3000 in your browser.
 
+---
+
 ## Using CC-Cleaner
 
 Once the app is running, you can navigate through the following tabs using the left sidebar:
@@ -106,17 +116,17 @@ Once the app is running, you can navigate through the following tabs using the l
 
    - **File History**: View file history entries from `~/.claude/file-history/` (version history and snapshots from Claude Code sessions). These accumulate over time and can be safely cleaned up to save disk space. Supports bulk selection and deletion.
 
-   - **Orphaned File History**: View file history entries that don't correspond to any active projects. These are completely safe to delete as they're no longer associated with any active projects. Supports bulk operations.
+   - **Orphaned File History**: View file history entries that don't correspond to any active sessions. These are completely safe to delete as they're no longer associated with any active sessions. Supports bulk operations.
 
    - **Orphaned Projects**: View session data directories that exist but have no entry in `.claude.json`. These can be safely moved to trash (automatically removes related session-env data). Supports bulk selection and deletion.
 
    - **Debug**: View debug files from your Claude Code sessions. These are temporary debug information and logs that can be safely cleaned up to save disk space. Supports bulk selection and deletion.
 
-   - **Orphaned Debug**: View debug files that don't correspond to any active projects. Completely safe to remove. Supports bulk operations.
+   - **Orphaned Debug**: View debug files that don't correspond to any active sessions. Completely safe to remove. Supports bulk operations.
 
    - **Todos**: View all todo files from your Claude Code sessions. Review and manage todo entries. Supports bulk selection and deletion.
 
-   - **Orphaned Todos**: View todo files that don't correspond to any active projects. Safe to remove if no longer needed. Supports bulk operations.
+   - **Orphaned Todos**: View todo files that don't correspond to any active sessions. Safe to remove if no longer needed. Supports bulk operations.
 
    - **Config Backups**: View, restore, and manage automatic backups of your `.claude.json` configuration file. Each backup is automatically created before destructive operations. Click "Restore" to restore any previous backup.
 
@@ -131,10 +141,14 @@ Each backup creates two files:
 
 Backups are stored in `~/.cc-cleaner/backup/` with timestamps for easy identification. We recommend creating a full backup before performing bulk operations.
 
-For more details about backup features, restoration strategies, and backup management, see [BACKUP_FEATURE.md](./BACKUP_FEATURE.md).
+For more details about backup features, restoration strategies, and backup management, see [docs/BACKUP_FEATURE.md](./docs/BACKUP_FEATURE.md).
+
+For information about when Claude Code creates different types of data and when they become orphaned, see [docs/DATA_CREATION_GUIDE.md](./docs/DATA_CREATION_GUIDE.md).
 
 ### Session Environment Data
 Each session/project can have associated session-env directories stored in `~/.claude/session-env/`. These directories are automatically tracked and cleaned up when you remove session data. The UI shows the count and list of related session-env directories for transparency.
+
+---
 
 ## What Gets Moved to Trash
 
@@ -155,6 +169,8 @@ These are session directories that exist in `~/.claude/projects/` but don't have
 ### Removing from Configuration
 This removes a project from `.claude.json` (configuration is backed up before changes). Note: This only removes the project from configuration and does NOT delete the session data or session-env directories. Use the Session Data or Orphaned tabs if you want to delete those files.
 
+---
+
 ## API Endpoints
 
 ### Projects & Sessions
@@ -167,7 +183,7 @@ This removes a project from `.claude.json` (configuration is backed up before ch
 
 ### File History
 - `GET /api/projects/file-history` - Get all file history entries
-- `GET /api/projects/orphaned-file-history` - Get orphaned file history entries (not associated with active projects)
+- `GET /api/projects/orphaned-file-history` - Get orphaned file history entries (not associated with active sessions)
 - `POST /api/clean/file-history` - Clean a single file history entry (creates backup)
 - `POST /api/clean/file-histories` - Clean multiple file history entries (creates backup)
 - `POST /api/clean/orphaned-file-history` - Clean a single orphaned file history entry (creates backup)
@@ -178,6 +194,8 @@ This removes a project from `.claude.json` (configuration is backed up before ch
 - `GET /api/backups` - Get list of config backups
 - `POST /api/restore/backup` - Restore a backup file
 - `POST /api/backup/full-claude` - Create full backup of .claude directory
+
+---
 
 ## Safety Features
 
@@ -192,6 +210,8 @@ This removes a project from `.claude.json` (configuration is backed up before ch
 - ✅ No modification to actual project files
 - ✅ Session data is isolated from project data
 
+---
+
 ## Tips
 
 - Start by cleaning orphaned projects (they're moved to trash, safe and recoverable)
@@ -200,11 +220,15 @@ This removes a project from `.claude.json` (configuration is backed up before ch
 - All items moved to trash can be recovered from your system trash bin
 - Backing up your `.claude.json` is recommended before bulk operations
 
+---
+
 ## Requirements
 
 - **Node.js**: v14 or higher
 - **Operating System**: macOS or Linux
 - **Permissions**: Read/write access to `~/.claude/` directory and `~/` home directory
+
+---
 
 ## Troubleshooting
 
@@ -216,6 +240,8 @@ This removes a project from `.claude.json` (configuration is backed up before ch
 
 **Not working on Windows**: This tool is designed for macOS and Linux. Windows support would require modifications to the directory size calculation and file operations.
 
+---
+
 ## Project Structure
 
 ```
@@ -226,6 +252,9 @@ CC-Cleaner/
 ├── index.html             # Entry HTML file
 ├── README.md              # This file
 ├── .gitignore             # Git ignore file
+├── docs/                  # Documentation
+│   ├── BACKUP_FEATURE.md  # Backup features documentation
+│   └── DATA_CREATION_GUIDE.md # Data creation and orphaned detection guide
 ├── src/
 │   ├── main.js           # Vue app entry point
 │   └── App.vue           # Main Vue component
@@ -234,6 +263,8 @@ CC-Cleaner/
 
 Backups are stored in: ~/.cc-cleaner/backup/
 ```
+
+---
 
 ## Development
 

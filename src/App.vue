@@ -2,7 +2,7 @@
   <div class="app">
     <header class="header">
       <div class="header-left">
-        <div class="logo-title">
+        <div class="logo-title" @click="refreshPage" role="button" tabindex="0" @keydown.enter="refreshPage" title="Refresh page (Ctrl+Shift+R)">
           <img src="/broom.png" alt="Logo" class="logo">
           <h1>Claude Code Cleaner</h1>
         </div>
@@ -26,6 +26,17 @@
 
     <div class="main-container">
       <aside class="sidebar">
+        <div class="folder-buttons-section">
+          <button @click="openDirectory(claudeDir)" :title="`Open ${claudeDir}`" class="folder-button">
+            <span>📁</span>
+            <span class="folder-label">.claude</span>
+          </button>
+          <button @click="openDirectory(ccCleanerDir)" :title="`Open ${ccCleanerDir}`" class="folder-button">
+            <span>📁</span>
+            <span class="folder-label">.cc-cleaner</span>
+          </button>
+        </div>
+
         <nav class="tabs">
           <button
             v-for="tab in tabs"
@@ -33,13 +44,17 @@
             :class="['tab-button', { active: activeTab === tab.id }]"
             @click="switchTab(tab.id)"
           >
-            <span class="tab-label">{{ tab.label }}</span>
+            <span class="tab-label">
+              <span class="tab-label-bold">{{ formatTabLabel(tab.label).bold }}</span>
+              <span v-if="formatTabLabel(tab.label).normal" class="tab-label-normal">{{ formatTabLabel(tab.label).normal }}</span>
+            </span>
             <div class="tab-info">
-              <span class="tab-count">{{ getTabCount(tab.id) }}</span>
+              <span :class="['tab-count', { 'tab-count-highlight': shouldHighlightTab(tab.id) }]">{{ getTabCount(tab.id) }}</span>
               <span v-if="getTabSelected(tab.id)" class="tab-selected">{{ getTabSelected(tab.id) }}</span>
             </div>
           </button>
         </nav>
+
         <div class="sidebar-footer">
           <a href="https://github.com/tk-425/CC-Cleaner" target="_blank" rel="noopener noreferrer" title="View on GitHub">
             <img src="/github.png" alt="GitHub" class="github-icon">
@@ -666,6 +681,10 @@ const confirmationTitle = ref('');
 const confirmationMessage = ref('');
 let confirmationCallback = null;
 
+// Directory paths - will be set in onMounted
+let claudeDir = '';
+let ccCleanerDir = '';
+
 const tabs = [
   { id: 'sessions', label: 'Session Data (.claude/projects)' },
   { id: 'json-projects', label: 'Projects (.claude.json)' },
@@ -814,6 +833,26 @@ function getTabSelected(tabId) {
     default:
       return null;
   }
+}
+
+function shouldHighlightTab(tabId) {
+  const tabsToHighlight = ['orphaned-file-history', 'orphaned', 'orphaned-debug', 'orphaned-todos'];
+  if (!tabsToHighlight.includes(tabId)) return false;
+  return getTabCount(tabId) > 0;
+}
+
+function formatTabLabel(label) {
+  const match = label.match(/^(.*?)\s*(\(.*\))$/);
+  if (match) {
+    return {
+      bold: match[1],
+      normal: ' ' + match[2]
+    };
+  }
+  return {
+    bold: label,
+    normal: ''
+  };
 }
 
 // Tab navigation
@@ -1676,8 +1715,39 @@ async function createFullBackup() {
   );
 }
 
+function refreshPage() {
+  location.reload();
+}
+
+async function openDirectory(dirPath) {
+  try {
+    const response = await fetch('/api/open/directory', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ path: dirPath })
+    });
+
+    const data = await response.json();
+    if (!data.success) {
+      showError(data.message || 'Failed to open directory');
+    }
+  } catch (error) {
+    showError(`Error opening directory: ${error.message}`);
+  }
+}
+
 // Lifecycle
 onMounted(() => {
+  // Initialize directory paths using tilde expansion
+  claudeDir = '~/.claude'.replace('~', window.location.hostname === 'localhost' ? `/Users/${navigator.userAgent}` : '~');
+  ccCleanerDir = '~/.cc-cleaner'.replace('~', window.location.hostname === 'localhost' ? `/Users/${navigator.userAgent}` : '~');
+
+  // For browser, we can't get home directory, so we'll pass tilde paths and let backend handle it
+  claudeDir = '~/.claude';
+  ccCleanerDir = '~/.cc-cleaner';
+
   loadData();
 });
 </script>
@@ -1737,6 +1807,16 @@ h1 {
   display: flex;
   align-items: center;
   gap: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.logo-title:hover {
+  opacity: 0.7;
+}
+
+.logo-title:active {
+  opacity: 0.5;
 }
 
 .logo {
@@ -1817,6 +1897,45 @@ h1 {
   opacity: 1;
 }
 
+.folder-buttons-section {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.folder-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #e0e0e0;
+  font-size: 13px;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition: opacity 0.2s, background-color 0.2s;
+  flex: 1;
+  justify-content: center;
+}
+
+.folder-button:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.folder-button:active {
+  opacity: 0.9;
+}
+
+.folder-label {
+  font-family: monospace;
+  font-size: 12px;
+}
+
 .content-area {
   flex: 1;
   overflow-y: auto;
@@ -1862,8 +1981,19 @@ h1 {
 }
 
 .tab-label {
-  display: block;
+  display: flex;
+  flex-direction: column;
   flex: 1;
+}
+
+.tab-label-bold {
+  font-weight: 700;
+}
+
+.tab-label-normal {
+  font-weight: 400;
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .tab-info {
@@ -1883,9 +2013,19 @@ h1 {
   font-weight: 600;
 }
 
+.tab-count-highlight {
+  background: #ff6b6b;
+  color: #fff;
+}
+
 .tab-button.active .tab-count {
   background: #4a9eff;
   color: #000;
+}
+
+.tab-button.active .tab-count-highlight {
+  background: #ff6b6b;
+  color: #fff;
 }
 
 .tab-selected {
