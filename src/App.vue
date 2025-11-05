@@ -637,7 +637,7 @@
 import { ref, computed, onMounted } from 'vue';
 
 // State
-const activeTab = ref('json-projects');
+const activeTab = ref('sessions');
 const jsonProjects = ref([]);
 const sessions = ref([]);
 const orphaned = ref([]);
@@ -667,11 +667,11 @@ const confirmationMessage = ref('');
 let confirmationCallback = null;
 
 const tabs = [
-  { id: 'json-projects', label: 'Projects (.claude.json)' },
   { id: 'sessions', label: 'Session Data (.claude/projects)' },
+  { id: 'json-projects', label: 'Projects (.claude.json)' },
+  { id: 'orphaned', label: 'Orphaned Projects' },
   { id: 'file-history', label: 'File History' },
   { id: 'orphaned-file-history', label: 'Orphaned File History' },
-  { id: 'orphaned', label: 'Orphaned Projects' },
   { id: 'debug', label: 'Debug' },
   { id: 'orphaned-debug', label: 'Orphaned Debug' },
   { id: 'todos', label: 'Todos' },

@@ -166,7 +166,7 @@ function getJsonProjects() {
 
       return {
         path: projectPath,
-        exists: fs.existsSync(projectPath),
+        exists: fs.existsSync(sessionDirPath),
         config: data.projects[projectPath],
         sessionEnvs: sessionEnvs
       };
