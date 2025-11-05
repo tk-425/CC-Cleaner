@@ -9,6 +9,19 @@ CC-Cleaner provides two types of backups to protect your Claude Code data:
 
 All backups are stored centrally in `~/.cc-cleaner/` for easy management.
 
+## Data Types Managed by CC-Cleaner
+
+CC-Cleaner can help you manage and clean up the following types of Claude Code data:
+
+- **Projects**: Configurations stored in `.claude.json`
+- **Session Data**: Active and orphaned session directories in `~/.claude/projects/`
+- **Session Environment Data**: Environment-specific data in `~/.claude/session-env/`
+- **File History**: Version history and snapshots from `~/.claude/file-history/`
+- **Debug Files**: Debug information and logs from sessions
+- **Todos**: Todo entries from Claude Code sessions
+
+Each data type can be individually reviewed, selected via checkboxes, and managed in bulk operations. The app distinguishes between active data (linked to projects) and orphaned data (no longer associated with any project).
+
 ## Config Backups
 
 ### How It Works

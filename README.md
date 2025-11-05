@@ -6,19 +6,29 @@ A modern web-based GUI tool to manage and clean Claude Code projects. Built with
 
 ## Features
 
+### Data Management
 - **Projects Tab**: View all projects from `.claude.json` with metadata (cost, duration, status) and related session-env directories
 - **Session Data Tab**: Browse and move session data to trash from `~/.claude/projects/` directory, automatically cleaning related session-env data
 - **File History Tab**: View and clean up file history entries from `~/.claude/file-history/` (version history and snapshots from Claude Code sessions)
 - **Orphaned File History Tab**: Find and remove orphaned file history entries that don't correspond to any active projects (safe to delete)
 - **Orphaned Projects Tab**: Find and move orphaned session data to trash (doesn't correspond to any project), including related session-env directories
+- **Debug Tab**: View and clean up debug files and logs from Claude Code sessions
+- **Orphaned Debug Tab**: Find and remove debug files that don't correspond to any active projects
+- **Todos Tab**: View and manage todo entries from Claude Code sessions
+- **Orphaned Todos Tab**: Find and remove todo files that don't correspond to any active projects
+
+### Backup & Safety
 - **Config Backups Tab**: View, restore, and manage `.claude.json` backups
-- **Full .claude Directory Backup**: Create complete backups of your entire `.claude` directory (projects, session data, configuration, etc.) with a single click
-- **Session Environment Tracking**: Displays and automatically cleans up session-env directories associated with each project/session
-- **Bulk Operations**: Select multiple items and move them to trash in batch
-- **Safe Operations**: All destructive operations require confirmation
+- **Full .claude Directory Backup**: Create complete backups of your entire `.claude` directory (projects, session data, configuration, debug files, todos, etc.) with a single click
 - **Automatic Backups**: Creates timestamped backups of `.claude.json` before each operation
+- **Session Environment Tracking**: Displays and automatically cleans up session-env directories associated with each project/session
+
+### User Experience
+- **Bulk Operations**: Select multiple items with checkboxes and move them to trash in batch
+- **Safe Operations**: All destructive operations require confirmation dialogs
 - **Trash Instead of Delete**: All removed items go to your system trash bin (recoverable)
 - **Easy Restoration**: Restore any previous backup instantly with one click
+- **Fixed UI**: Header and sidebar stay fixed while content scrolls for better usability
 
 ## Tech Stack
 
@@ -86,12 +96,29 @@ Then open http://localhost:3000 in your browser.
 
 ## Using CC-Cleaner
 
-Once the app is running, you can use the tabs to:
-   - **Projects (.claude.json)**: View all registered projects, see their metadata, related session-env directories, and remove them from configuration
-   - **Session Data (.claude/projects)**: View session data for projects with their session-env count, select multiple sessions, and clean them (automatically removes related session-env data)
-   - **File History**: View file history entries from `~/.claude/file-history/` (version history and snapshots from Claude Code sessions). These accumulate over time and can be safely cleaned up to save disk space
-   - **Orphaned File History**: View file history entries that don't correspond to any active projects. These are safe to delete as they're no longer associated with any active projects
-   - **Orphaned Projects**: View projects with session data but no entry in .claude.json, and delete them safely (automatically removes related session-env data)
+Once the app is running, you can navigate through the following tabs using the left sidebar:
+
+### Tab Guide
+
+   - **Projects (.claude.json)**: View all registered projects from your `.claude.json` file. See their metadata (cost, duration), related session-env directories, and remove projects from configuration. All items can be selected with checkboxes for bulk operations.
+
+   - **Session Data (.claude/projects)**: View session data directories from your Claude Code projects. Each entry shows session-env count and size information. Select multiple sessions and clean them in bulk (automatically removes related session-env data).
+
+   - **File History**: View file history entries from `~/.claude/file-history/` (version history and snapshots from Claude Code sessions). These accumulate over time and can be safely cleaned up to save disk space. Supports bulk selection and deletion.
+
+   - **Orphaned File History**: View file history entries that don't correspond to any active projects. These are completely safe to delete as they're no longer associated with any active projects. Supports bulk operations.
+
+   - **Orphaned Projects**: View session data directories that exist but have no entry in `.claude.json`. These can be safely moved to trash (automatically removes related session-env data). Supports bulk selection and deletion.
+
+   - **Debug**: View debug files from your Claude Code sessions. These are temporary debug information and logs that can be safely cleaned up to save disk space. Supports bulk selection and deletion.
+
+   - **Orphaned Debug**: View debug files that don't correspond to any active projects. Completely safe to remove. Supports bulk operations.
+
+   - **Todos**: View all todo files from your Claude Code sessions. Review and manage todo entries. Supports bulk selection and deletion.
+
+   - **Orphaned Todos**: View todo files that don't correspond to any active projects. Safe to remove if no longer needed. Supports bulk operations.
+
+   - **Config Backups**: View, restore, and manage automatic backups of your `.claude.json` configuration file. Each backup is automatically created before destructive operations. Click "Restore" to restore any previous backup.
 
 ### Full .claude Directory Backup
 Click the **"Create Backup"** button in the header to create a complete backup of your Claude Code data. This backs up:
