@@ -8,6 +8,8 @@ A modern web-based GUI tool to manage and clean Claude Code projects. Built with
 
 - **Projects Tab**: View all projects from `.claude.json` with metadata (cost, duration, status) and related session-env directories
 - **Session Data Tab**: Browse and move session data to trash from `~/.claude/projects/` directory, automatically cleaning related session-env data
+- **File History Tab**: View and clean up file history entries from `~/.claude/file-history/` (version history and snapshots from Claude Code sessions)
+- **Orphaned File History Tab**: Find and remove orphaned file history entries that don't correspond to any active projects (safe to delete)
 - **Orphaned Projects Tab**: Find and move orphaned session data to trash (doesn't correspond to any project), including related session-env directories
 - **Config Backups Tab**: View, restore, and manage `.claude.json` backups
 - **Full .claude Directory Backup**: Create complete backups of your entire `.claude` directory (projects, session data, configuration, etc.) with a single click
@@ -67,6 +69,8 @@ Then open http://localhost:3000 in your browser.
 Once the app is running, you can use the tabs to:
    - **Projects (.claude.json)**: View all registered projects, see their metadata, related session-env directories, and remove them from configuration
    - **Session Data (.claude/projects)**: View session data for projects with their session-env count, select multiple sessions, and clean them (automatically removes related session-env data)
+   - **File History**: View file history entries from `~/.claude/file-history/` (version history and snapshots from Claude Code sessions). These accumulate over time and can be safely cleaned up to save disk space
+   - **Orphaned File History**: View file history entries that don't correspond to any active projects. These are safe to delete as they're no longer associated with any active projects
    - **Orphaned Projects**: View projects with session data but no entry in .claude.json, and delete them safely (automatically removes related session-env data)
 
 ### Full .claude Directory Backup
@@ -104,14 +108,25 @@ This removes a project from `.claude.json` (configuration is backed up before ch
 
 ## API Endpoints
 
+### Projects & Sessions
 - `GET /api/projects/json` - Get projects from .claude.json
 - `GET /api/projects/sessions` - Get session data directories
 - `GET /api/projects/orphaned` - Get orphaned projects
-- `GET /api/stats` - Get statistics
-- `GET /api/backups` - Get list of config backups
 - `POST /api/clean/session` - Clean a single session (creates backup)
 - `POST /api/clean/sessions` - Clean multiple sessions (creates backup)
 - `POST /api/remove/project` - Remove project from .claude.json (creates backup)
+
+### File History
+- `GET /api/projects/file-history` - Get all file history entries
+- `GET /api/projects/orphaned-file-history` - Get orphaned file history entries (not associated with active projects)
+- `POST /api/clean/file-history` - Clean a single file history entry (creates backup)
+- `POST /api/clean/file-histories` - Clean multiple file history entries (creates backup)
+- `POST /api/clean/orphaned-file-history` - Clean a single orphaned file history entry (creates backup)
+- `POST /api/clean/orphaned-file-histories` - Clean multiple orphaned file history entries (creates backup)
+
+### Backups & Statistics
+- `GET /api/stats` - Get statistics (project count, sizes, orphaned counts, etc.)
+- `GET /api/backups` - Get list of config backups
 - `POST /api/restore/backup` - Restore a backup file
 - `POST /api/backup/full-claude` - Create full backup of .claude directory
 
