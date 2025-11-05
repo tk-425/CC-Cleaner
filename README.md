@@ -36,6 +36,26 @@ A modern web-based GUI tool to manage and clean Claude Code projects. Built with
 npm install
 ```
 
+### Optional: Create a Shell Alias
+
+For quick access from anywhere, you can add a shell alias to your `.zshrc` or `.bashrc`:
+
+```bash
+alias ccc="cd /path/to/CC-Cleaner && npm start"
+```
+
+Then reload your shell config:
+```bash
+source ~/.zshrc  # for zsh
+# or
+source ~/.bashrc  # for bash
+```
+
+Now you can start CC-Cleaner from anywhere with:
+```bash
+ccc
+```
+
 ## Usage
 
 ### Development Mode

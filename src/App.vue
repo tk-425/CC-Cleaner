@@ -2,7 +2,10 @@
   <div class="app">
     <header class="header">
       <div class="header-left">
-        <h1>Claude Code Cleaner</h1>
+        <div class="logo-title">
+          <img src="/broom.png" alt="Logo" class="logo">
+          <h1>Claude Code Cleaner</h1>
+        </div>
       </div>
       <div class="header-right">
         <div class="stats">
@@ -282,6 +285,21 @@
 
     <!-- Backups Tab -->
     <div v-if="activeTab === 'backups'" class="tab-content active">
+      <div class="bulk-actions">
+        <div class="select-all-container">
+          <input
+            type="checkbox"
+            id="select-all-backups"
+            class="checkbox"
+            :checked="allBackupsSelected"
+            @change="toggleAllBackups"
+          />
+          <label for="select-all-backups">Select All</label>
+        </div>
+        <button class="danger" @click="removeSelectedBackups" style="margin-left: auto">
+          Move to Trash
+        </button>
+      </div>
       <div v-if="backups.length > 0" class="project-list">
         <div v-for="backup in backups" :key="backup.filename" class="project-item">
           <div class="project-info">
@@ -293,8 +311,15 @@
             </div>
           </div>
           <div class="project-actions">
+            <input
+              type="checkbox"
+              class="checkbox backup-checkbox"
+              :checked="selectedBackups.has(backup.filename)"
+              @change="toggleBackupCheckbox(backup.filename)"
+            />
             <button @click="viewBackup(backup)">View</button>
             <button class="primary" @click="restoreBackup(backup)">Restore</button>
+            <button class="danger" @click="removeBackup(backup)">Remove</button>
           </div>
         </div>
       </div>
@@ -392,6 +417,7 @@ const selectedSessions = ref(new Set());
 const selectedOrphaned = ref(new Set());
 const selectedFileHistory = ref(new Set());
 const selectedOrphanedFileHistory = ref(new Set());
+const selectedBackups = ref(new Set());
 const successMessage = ref('');
 const errorMessage = ref('');
 const showConfirmation = ref(false);
@@ -423,6 +449,10 @@ const allFileHistorySelected = computed(() => {
 
 const allOrphanedFileHistorySelected = computed(() => {
   return orphanedFileHistory.value.length > 0 && orphanedFileHistory.value.every(f => selectedOrphanedFileHistory.value.has(f.dir));
+});
+
+const allBackupsSelected = computed(() => {
+  return backups.value.length > 0 && backups.value.every(b => selectedBackups.value.has(b.filename));
 });
 
 // Helper functions
@@ -556,6 +586,24 @@ function toggleAllFileHistory() {
     fileHistory.value.forEach(f => selectedFileHistory.value.add(f.dir));
   }
   selectedFileHistory.value = new Set(selectedFileHistory.value);
+}
+
+function toggleBackupCheckbox(filename) {
+  if (selectedBackups.value.has(filename)) {
+    selectedBackups.value.delete(filename);
+  } else {
+    selectedBackups.value.add(filename);
+  }
+  selectedBackups.value = new Set(selectedBackups.value);
+}
+
+function toggleAllBackups() {
+  if (allBackupsSelected.value) {
+    selectedBackups.value.clear();
+  } else {
+    backups.value.forEach(b => selectedBackups.value.add(b.filename));
+  }
+  selectedBackups.value = new Set(selectedBackups.value);
 }
 
 // Confirmation dialog
@@ -906,6 +954,62 @@ async function restoreBackup(backup) {
   );
 }
 
+async function removeBackup(backup) {
+  showConfirmationDialog(
+    'Move Backup to Trash',
+    `Move this backup file to trash?\n\n${backup.filename}\n\nSize: ${formatBytes(backup.size)}`,
+    async () => {
+      try {
+        const res = await fetch('/api/remove/backup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: backup.filename })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess('Backup moved to trash');
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move backup to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+async function removeSelectedBackups() {
+  if (selectedBackups.value.size === 0) {
+    showError('No backups selected');
+    return;
+  }
+
+  showConfirmationDialog(
+    'Move Selected Backups to Trash',
+    `Move ${selectedBackups.value.size} backup(s) to trash?`,
+    async () => {
+      try {
+        const res = await fetch('/api/remove/backups', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filenames: Array.from(selectedBackups.value) })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess(`Moved ${data.results.filter(r => r.success).length} backup(s) to trash`);
+          selectedBackups.value.clear();
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move backups to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
 async function createFullBackup() {
   showConfirmationDialog(
     'Create Full Backup',
@@ -976,6 +1080,20 @@ onMounted(() => {
 h1 {
   font-size: 28px;
   font-weight: 600;
+  margin: 0;
+}
+
+.logo-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .stats {
