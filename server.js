@@ -842,6 +842,64 @@ app.post('/api/restore/backup', (req, res) => {
   }
 });
 
+// Remove backup endpoint
+app.post('/api/remove/backup', async (req, res) => {
+  const { filename } = req.body;
+
+  try {
+    const backupPath = path.join(CONFIG_BACKUP_DIR, filename);
+
+    // Validate backup file exists and is in the config backup directory
+    if (!fs.existsSync(backupPath) || !backupPath.startsWith(CONFIG_BACKUP_DIR)) {
+      return res.status(400).json({ success: false, message: 'Invalid backup file' });
+    }
+
+    // Move to trash instead of permanent deletion
+    try {
+      await trash(backupPath);
+      res.json({ success: true, message: 'Backup moved to trash' });
+    } catch (trashError) {
+      res.status(500).json({ success: false, message: 'Failed to move backup to trash: ' + trashError.message });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Remove multiple backups endpoint
+app.post('/api/remove/backups', async (req, res) => {
+  const { filenames } = req.body;
+
+  if (!Array.isArray(filenames) || filenames.length === 0) {
+    return res.status(400).json({ success: false, message: 'Invalid filenames' });
+  }
+
+  const results = [];
+  for (const filename of filenames) {
+    try {
+      const backupPath = path.join(CONFIG_BACKUP_DIR, filename);
+
+      // Validate backup file exists and is in the config backup directory
+      if (!fs.existsSync(backupPath) || !backupPath.startsWith(CONFIG_BACKUP_DIR)) {
+        results.push({ filename, success: false, message: 'Invalid backup file' });
+        continue;
+      }
+
+      // Move to trash
+      try {
+        await trash(backupPath);
+        results.push({ filename, success: true });
+      } catch (trashError) {
+        results.push({ filename, success: false, message: trashError.message });
+      }
+    } catch (error) {
+      results.push({ filename, success: false, message: error.message });
+    }
+  }
+
+  res.json({ success: true, results });
+});
+
 app.listen(PORT, () => {
   console.log(`CC-Cleaner running at http://localhost:${PORT}`);
 });
