@@ -28,18 +28,25 @@
       </div>
     </header>
 
-    <div class="tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        :class="['tab-button', { active: activeTab === tab.id }]"
-        @click="switchTab(tab.id)"
-      >
-        {{ tab.label }}
-        <span class="tab-count">{{ getTabCount(tab.id) }}</span>
-        <span v-if="getTabSelected(tab.id)" class="tab-selected">({{ getTabSelected(tab.id) }})</span>
-      </button>
-    </div>
+    <div class="main-container">
+      <aside class="sidebar">
+        <nav class="tabs">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            :class="['tab-button', { active: activeTab === tab.id }]"
+            @click="switchTab(tab.id)"
+          >
+            <span class="tab-label">{{ tab.label }}</span>
+            <div class="tab-info">
+              <span class="tab-count">{{ getTabCount(tab.id) }}</span>
+              <span v-if="getTabSelected(tab.id)" class="tab-selected">{{ getTabSelected(tab.id) }}</span>
+            </div>
+          </button>
+        </nav>
+      </aside>
+
+      <main class="content-area">
 
     <div v-if="successMessage" class="success-message show">
       {{ successMessage }}
@@ -579,16 +586,18 @@
       </div>
     </div>
 
-    <!-- Confirmation Dialog -->
-    <div v-if="showConfirmation" class="confirmation-dialog show">
-      <div class="dialog-content">
-        <h2>{{ confirmationTitle }}</h2>
-        <p>{{ confirmationMessage }}</p>
-        <div class="dialog-actions">
-          <button @click="cancelConfirmation">Cancel</button>
-          <button class="danger" @click="confirmAction">Confirm</button>
+      <!-- Confirmation Dialog -->
+      <div v-if="showConfirmation" class="confirmation-dialog show">
+        <div class="dialog-content">
+          <h2>{{ confirmationTitle }}</h2>
+          <p>{{ confirmationMessage }}</p>
+          <div class="dialog-actions">
+            <button @click="cancelConfirmation">Cancel</button>
+            <button class="danger" @click="confirmAction">Confirm</button>
+          </div>
         </div>
       </div>
+      </main>
     </div>
   </div>
 </template>
@@ -1595,20 +1604,18 @@ onMounted(() => {
   background: #0f0f0f;
   color: #e0e0e0;
   min-height: 100vh;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
   border-bottom: 1px solid #333;
-  padding-bottom: 20px;
-  max-width: 1400px;
-  margin-left: auto;
-  margin-right: auto;
+  padding: 20px;
   gap: 20px;
+  flex-shrink: 0;
 }
 
 .header-left {
@@ -1665,40 +1672,72 @@ h1 {
   margin-top: 5px;
 }
 
+.main-container {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 220px;
+  border-right: 1px solid #333;
+  overflow-y: auto;
+  flex-shrink: 0;
+  background: #0a0a0a;
+}
+
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
 .tabs {
   display: flex;
+  flex-direction: column;
   gap: 0;
-  border-bottom: 1px solid #333;
-  margin-bottom: 20px;
-  max-width: 1400px;
-  margin-left: auto;
-  margin-right: auto;
-  overflow-x: auto;
+  padding: 0;
 }
 
 .tab-button {
-  padding: 12px 24px;
+  padding: 12px 16px;
   background: none;
   border: none;
+  border-left: 3px solid transparent;
   color: #999;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  border-bottom: 2px solid transparent;
   transition: all 0.2s;
-  white-space: nowrap;
+  text-align: left;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 6px;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .tab-button:hover {
   color: #e0e0e0;
+  background: #1a1a1a;
 }
 
 .tab-button.active {
   color: #4a9eff;
-  border-bottom-color: #4a9eff;
+  border-left-color: #4a9eff;
+  background: #1a1a1a;
+}
+
+.tab-label {
+  display: block;
+  flex: 1;
+}
+
+.tab-info {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  align-items: center;
 }
 
 .tab-count {
@@ -1707,7 +1746,7 @@ h1 {
   color: #999;
   padding: 2px 6px;
   border-radius: 3px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -1718,14 +1757,12 @@ h1 {
 
 .tab-selected {
   color: #6dd86d;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 
 .tab-content {
-  max-width: 1400px;
-  margin-left: auto;
-  margin-right: auto;
+  width: 100%;
 }
 
 .project-list {
