@@ -305,10 +305,12 @@ function getRelatedFileHistory(sessionDirName) {
 function getAllProjectUuids() {
   try {
     const uuids = new Set();
-    const sessions = getSessionProjects();
+    const jsonProjects = getJsonProjects();
 
-    for (const session of sessions) {
-      const sessionUuids = getSessionUuidsForProject(session.dir);
+    // Get UUIDs from .claude.json projects
+    for (const jsonProject of jsonProjects) {
+      const encodedPath = encodePathForSession(jsonProject.path);
+      const sessionUuids = getSessionUuidsForProject(encodedPath);
       sessionUuids.forEach(uuid => uuids.add(uuid.toLowerCase()));
     }
 
@@ -368,7 +370,17 @@ function getOrphanedFileHistory() {
   try {
     if (!fs.existsSync(FILE_HISTORY_DIR)) return [];
 
-    const allProjectUuids = getAllProjectUuids();
+    // Get all active session UUIDs from session-env
+    const allSessionUuids = new Set();
+    if (fs.existsSync(SESSION_ENV_DIR)) {
+      const sessionEnvDirs = fs.readdirSync(SESSION_ENV_DIR);
+      sessionEnvDirs.forEach(dir => {
+        if (!dir.startsWith('.')) {
+          allSessionUuids.add(dir.toLowerCase());
+        }
+      });
+    }
+
     const dirs = fs.readdirSync(FILE_HISTORY_DIR);
 
     return dirs
@@ -384,8 +396,8 @@ function getOrphanedFileHistory() {
           return false;
         }
 
-        // Check if this UUID exists in any active project
-        return !allProjectUuids.has(dir.toLowerCase());
+        // Check if this UUID exists in any active session
+        return !allSessionUuids.has(dir.toLowerCase());
       })
       .map(dir => {
         const fullPath = path.join(FILE_HISTORY_DIR, dir);
@@ -1394,6 +1406,38 @@ app.post('/api/remove/backups', async (req, res) => {
   }
 
   res.json({ success: true, results });
+});
+
+// Open directory in Finder (macOS only)
+app.post('/api/open/directory', (req, res) => {
+  const { path: dirPath } = req.body;
+
+  // Only allow on macOS
+  if (process.platform !== 'darwin') {
+    return res.status(400).json({ success: false, message: 'This feature is only available on macOS' });
+  }
+
+  try {
+    // Expand tilde to home directory
+    let expandedPath = dirPath.startsWith('~') ? dirPath.replace('~', HOME) : dirPath;
+    const normalizedPath = path.resolve(expandedPath);
+
+    // Validate path starts with home directory for security
+    if (!normalizedPath.startsWith(HOME)) {
+      return res.status(400).json({ success: false, message: 'Invalid path' });
+    }
+
+    // Check if path exists
+    if (!fs.existsSync(normalizedPath)) {
+      return res.status(400).json({ success: false, message: 'Directory does not exist' });
+    }
+
+    // Open directory in Finder
+    execSync(`open "${normalizedPath}"`);
+    res.json({ success: true, message: 'Directory opened in Finder' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 app.listen(PORT, () => {
