@@ -1,23 +1,28 @@
-# Config Backup Feature
+# Backup Features
 
 ## Overview
 
-CC-Cleaner now automatically creates backups of your `.claude.json` configuration file whenever you perform any cleanup or modification operation. This ensures you can always revert to a previous state if something goes wrong.
+CC-Cleaner provides two types of backups to protect your Claude Code data:
 
-## How It Works
+1. **Config Backups** - Automatic `.claude.json` backups before each operation
+2. **Full Directory Backups** - Complete backups of your entire `.claude` folder and `.claude.json` file
 
-### Automatic Backups
+All backups are stored centrally in `~/.cc-cleaner/` for easy management.
 
-Backups are **automatically created** before any of these operations:
+## Config Backups
+
+### How It Works
+
+Config backups are **automatically created** before any of these operations:
 1. **Clean Session Data** - Moving session data to trash
 2. **Remove Projects** - Removing projects from `.claude.json`
 3. **Restore Backup** - Restoring a previous backup (creates backup of current state first)
 
 ### Backup Location
 
-All backups are stored in:
+All config backups are stored in:
 ```
-~/.claude/config-copy/
+~/.cc-cleaner/config-copy/
 ```
 
 ### Backup Naming
@@ -34,38 +39,108 @@ Example:
 
 This naming makes it easy to identify when each backup was created.
 
+## Full Directory Backups
+
+### How It Works
+
+Click the **"Create Backup"** button in the header to create a complete backup of your entire Claude Code setup. This backs up:
+- The entire `.claude` directory (projects, session data, configuration, etc.)
+- The `.claude.json` configuration file
+
+We recommend creating a full backup before performing bulk operations.
+
+### Backup Location
+
+All full backups are stored in:
+```
+~/.cc-cleaner/backup/
+```
+
+### Backup Naming
+
+Full backups are created with timestamps in this format:
+```
+.claude-YYYY-MM-DD_HH-MM-SS          (directory)
+.claude-YYYY-MM-DD_HH-MM-SS.json     (config file)
+```
+
+Example:
+```
+.claude-2024-11-04_15-30-45/         (complete .claude directory)
+.claude-2024-11-04_15-30-45.json     (config file)
+```
+
+Both files use matching timestamps so they're clearly related.
+
 ## Using Backups
 
-### Viewing Backups
+### Viewing Config Backups
 
 1. Open CC-Cleaner
 2. Click on the **"Config Backups"** tab
-3. See a list of all available backups with:
+3. See a list of all available automatic config backups with:
    - Filename with timestamp
    - File size
    - Created and modified dates
 
-### Restoring a Backup
+### Viewing Full Directory Backups
+
+Full directory backups are stored in `~/.cc-cleaner/backup/` and can be accessed directly from your file system. Each backup contains:
+- A `.claude-YYYY-MM-DD_HH-MM-SS` directory with the complete `.claude` folder contents
+- A `.claude-YYYY-MM-DD_HH-MM-SS.json` file with your configuration
+
+### Restoring a Config Backup
 
 1. Go to the **"Config Backups"** tab
-2. Find the backup you want to restore
+2. Find the config backup you want to restore
 3. Click the **"Restore"** button
 4. Confirm the restoration in the dialog
 5. The backup will be restored, and your current config will be backed up too
 
+### Restoring a Full Directory Backup
+
+Full directory backups can be restored manually:
+1. Open your file system and navigate to `~/.cc-cleaner/backup/`
+2. Find the backup you want to restore (using the timestamp)
+3. Copy the `.claude-YYYY-MM-DD_HH-MM-SS` directory back to `~/.claude`
+4. Copy the `.claude-YYYY-MM-DD_HH-MM-SS.json` file back to `~/.claude.json`
+
+Alternatively, you can use the terminal:
+```bash
+cp -r ~/.cc-cleaner/backup/.claude-YYYY-MM-DD_HH-MM-SS ~/.claude
+cp ~/.cc-cleaner/backup/.claude-YYYY-MM-DD_HH-MM-SS.json ~/.claude.json
+```
+
 ## Safety Features
 
-✅ **Dual Backups**: When restoring a backup, the current `.claude.json` is automatically backed up first
+✅ **Multiple Backup Layers**: Both automatic config backups and manual full directory backups
+✅ **Dual Backups on Restore**: When restoring a config backup, the current state is automatically backed up first
 ✅ **Never Loses Data**: All backups are preserved, never deleted
 ✅ **Transparent Process**: You see backup filenames in success messages
-✅ **Easy Recovery**: All backups are listed and sortable by date
+✅ **Easy Recovery**: Config backups listed in UI, full backups accessible via file system
+✅ **Timestamped**: All backups include creation time for easy identification
 
-## Example Workflow
+## Example Workflows
 
+### Workflow 1: Quick Config Recovery
+```
+1. Before bulk operations, click "Create Backup" button
+   ↓
+   Backup created: .claude-2024-11-04_14-30-00/
+   Backup created: .claude-2024-11-04_14-30-00.json
+   ↓
+2. You perform bulk cleanup operations
+   ↓
+3. If something goes wrong, restore from ~/.cc-cleaner/backup/
+   ↓
+4. Both .claude directory and .claude.json are restored
+```
+
+### Workflow 2: Config-Only Recovery
 ```
 1. You remove some projects from CC-Cleaner
    ↓
-   Backup created: .claude.copy.2024-11-04_14-30-00.json
+   Automatic backup created: .claude.copy.2024-11-04_14-30-00.json
    ↓
 2. Later you realize you made a mistake
    ↓
@@ -81,8 +156,30 @@ This naming makes it easy to identify when each backup was created.
 
 ## Technical Details
 
+### Config Backups
 - Backups are standard JSON files
 - You can manually inspect any backup by opening it with a text editor
-- Backups are stored in the same location as other Claude Code config data
-- Filenames use ISO 8601 date format for sorting and readability
+- Filenames use ISO 8601 date format (`YYYY-MM-DD_HH-MM-SS`) for sorting and readability
 - All timestamps are in local time
+
+### Full Directory Backups
+- Complete recursive copy of the entire `.claude` directory structure
+- Includes all files and subdirectories (projects, session data, etc.)
+- Config file is backed up separately with matching timestamp
+- Stored as regular directories and files (not compressed)
+- Can be restored manually via file system or terminal commands
+- Timestamps on both directory and file allow easy identification
+
+### Storage Location
+All backups are centrally stored in `~/.cc-cleaner/`:
+```
+~/.cc-cleaner/
+├── config-copy/          # Automatic .claude.json backups
+│   ├── .claude.copy.2024-11-04_14-30-00.json
+│   ├── .claude.copy.2024-11-04_15-45-12.json
+│   └── ...
+└── backup/              # Full directory backups
+    ├── .claude-2024-11-04_14-30-00/
+    ├── .claude-2024-11-04_14-30-00.json
+    └── ...
+```
