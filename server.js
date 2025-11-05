@@ -1408,13 +1408,13 @@ app.post('/api/remove/backups', async (req, res) => {
   res.json({ success: true, results });
 });
 
-// Open directory in Finder (macOS only)
+// Open directory in file manager (macOS and Linux)
 app.post('/api/open/directory', (req, res) => {
   const { path: dirPath } = req.body;
 
-  // Only allow on macOS
-  if (process.platform !== 'darwin') {
-    return res.status(400).json({ success: false, message: 'This feature is only available on macOS' });
+  // Check if platform is supported
+  if (process.platform !== 'darwin' && process.platform !== 'linux') {
+    return res.status(400).json({ success: false, message: 'This feature is only available on macOS and Linux' });
   }
 
   try {
@@ -1432,9 +1432,12 @@ app.post('/api/open/directory', (req, res) => {
       return res.status(400).json({ success: false, message: 'Directory does not exist' });
     }
 
-    // Open directory in Finder
-    execSync(`open "${normalizedPath}"`);
-    res.json({ success: true, message: 'Directory opened in Finder' });
+    // Open directory in file manager based on platform
+    const openCommand = process.platform === 'darwin' ? 'open' : 'xdg-open';
+    execSync(`${openCommand} "${normalizedPath}"`);
+
+    const managerName = process.platform === 'darwin' ? 'Finder' : 'file manager';
+    res.json({ success: true, message: `Directory opened in ${managerName}` });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
