@@ -104,6 +104,8 @@ Each backup creates two files:
 
 Backups are stored in `~/.cc-cleaner/backup/` with timestamps for easy identification. We recommend creating a full backup before performing bulk operations.
 
+For more details about backup features, restoration strategies, and backup management, see [BACKUP_FEATURE.md](./BACKUP_FEATURE.md).
+
 ### Session Environment Data
 Each session/project can have associated session-env directories stored in `~/.claude/session-env/`. These directories are automatically tracked and cleaned up when you remove session data. The UI shows the count and list of related session-env directories for transparency.
 
