@@ -20,6 +20,7 @@ const CLAUDE_JSON_PATH = path.join(HOME, '.claude.json');
 const CLAUDE_DIR = path.join(HOME, '.claude');
 const PROJECTS_DIR = path.join(HOME, '.claude', 'projects');
 const SESSION_ENV_DIR = path.join(HOME, '.claude', 'session-env');
+const FILE_HISTORY_DIR = path.join(HOME, '.claude', 'file-history');
 const CC_CLEANER_DIR = path.join(HOME, '.cc-cleaner');
 const CONFIG_BACKUP_DIR = path.join(HOME, '.cc-cleaner', 'config-copy');
 const CC_CLEANER_BACKUP_DIR = path.join(HOME, '.cc-cleaner', 'backup');
@@ -281,6 +282,134 @@ function getOrphanedProjects() {
   });
 }
 
+// Helper function to find related file-history directories for a project
+function getRelatedFileHistory(sessionDirName) {
+  try {
+    const uuids = getSessionUuidsForProject(sessionDirName);
+
+    if (!fs.existsSync(FILE_HISTORY_DIR)) return [];
+
+    const fileHistoryDirs = fs.readdirSync(FILE_HISTORY_DIR);
+
+    // Return only file-history dirs that match this project's UUIDs
+    return fileHistoryDirs.filter(dir => uuids.includes(dir.toLowerCase()));
+  } catch (error) {
+    console.error('Error getting related file-history:', error);
+    return [];
+  }
+}
+
+// Get all UUIDs from all projects
+function getAllProjectUuids() {
+  try {
+    const uuids = new Set();
+    const sessions = getSessionProjects();
+
+    for (const session of sessions) {
+      const sessionUuids = getSessionUuidsForProject(session.dir);
+      sessionUuids.forEach(uuid => uuids.add(uuid.toLowerCase()));
+    }
+
+    return uuids;
+  } catch (error) {
+    console.error('Error getting all project UUIDs:', error);
+    return new Set();
+  }
+}
+
+// Get file-history data
+function getFileHistoryProjects() {
+  try {
+    if (!fs.existsSync(FILE_HISTORY_DIR)) return [];
+
+    const dirs = fs.readdirSync(FILE_HISTORY_DIR);
+    return dirs
+      .filter(dir => {
+        // Skip system files and hidden files
+        if (dir.startsWith('.')) return false;
+
+        const fullPath = path.join(FILE_HISTORY_DIR, dir);
+        // Only include directories
+        try {
+          return fs.statSync(fullPath).isDirectory();
+        } catch {
+          return false;
+        }
+      })
+      .map(dir => {
+        const fullPath = path.join(FILE_HISTORY_DIR, dir);
+
+        // Get related session-env directories for this UUID
+        const relatedSessionEnvs = [];
+        if (fs.existsSync(SESSION_ENV_DIR)) {
+          const sessionEnvDirs = fs.readdirSync(SESSION_ENV_DIR);
+          const matchingSessionEnvs = sessionEnvDirs.filter(env => env.toLowerCase() === dir.toLowerCase());
+          relatedSessionEnvs.push(...matchingSessionEnvs);
+        }
+
+        return {
+          dir: dir,
+          fullPath: fullPath,
+          size: getDirSize(fullPath),
+          files: fs.readdirSync(fullPath).length,
+          sessionEnvs: relatedSessionEnvs
+        };
+      });
+  } catch (error) {
+    console.error('Error reading file-history directory:', error);
+    return [];
+  }
+}
+
+// Get orphaned file-history (file-history dirs not matching any active project UUID)
+function getOrphanedFileHistory() {
+  try {
+    if (!fs.existsSync(FILE_HISTORY_DIR)) return [];
+
+    const allProjectUuids = getAllProjectUuids();
+    const dirs = fs.readdirSync(FILE_HISTORY_DIR);
+
+    return dirs
+      .filter(dir => {
+        // Skip system files and hidden files
+        if (dir.startsWith('.')) return false;
+
+        const fullPath = path.join(FILE_HISTORY_DIR, dir);
+        // Only include directories
+        try {
+          if (!fs.statSync(fullPath).isDirectory()) return false;
+        } catch {
+          return false;
+        }
+
+        // Check if this UUID exists in any active project
+        return !allProjectUuids.has(dir.toLowerCase());
+      })
+      .map(dir => {
+        const fullPath = path.join(FILE_HISTORY_DIR, dir);
+
+        // Get related session-env directories for this UUID
+        const relatedSessionEnvs = [];
+        if (fs.existsSync(SESSION_ENV_DIR)) {
+          const sessionEnvDirs = fs.readdirSync(SESSION_ENV_DIR);
+          const matchingSessionEnvs = sessionEnvDirs.filter(env => env.toLowerCase() === dir.toLowerCase());
+          relatedSessionEnvs.push(...matchingSessionEnvs);
+        }
+
+        return {
+          dir: dir,
+          fullPath: fullPath,
+          size: getDirSize(fullPath),
+          files: fs.readdirSync(fullPath).length,
+          sessionEnvs: relatedSessionEnvs
+        };
+      });
+  } catch (error) {
+    console.error('Error reading orphaned file-history:', error);
+    return [];
+  }
+}
+
 // API Endpoints
 app.get('/api/projects/json', (req, res) => {
   const projects = getJsonProjects().map(p => ({
@@ -305,14 +434,28 @@ app.get('/api/projects/orphaned', (req, res) => {
   res.json(orphanedWithSessionEnvs);
 });
 
+app.get('/api/projects/file-history', (req, res) => {
+  const fileHistory = getFileHistoryProjects();
+  res.json(fileHistory);
+});
+
+app.get('/api/projects/orphaned-file-history', (req, res) => {
+  const orphanedFileHistory = getOrphanedFileHistory();
+  res.json(orphanedFileHistory);
+});
+
 app.get('/api/stats', (req, res) => {
   const jsonProjects = getJsonProjects();
   const sessions = getSessionProjects();
   const orphaned = getOrphanedProjects();
+  const fileHistory = getFileHistoryProjects();
+  const orphanedFileHistory = getOrphanedFileHistory();
 
   const totalSessionSize = sessions.reduce((sum, s) => sum + s.size, 0);
   const orphanedSize = orphaned.reduce((sum, o) => sum + o.size, 0);
   const totalProjectsSize = sessions.reduce((sum, s) => sum + s.size, 0);
+  const totalFileHistorySize = fileHistory.reduce((sum, f) => sum + f.size, 0);
+  const orphanedFileHistorySize = orphanedFileHistory.reduce((sum, f) => sum + f.size, 0);
 
   res.json({
     totalProjects: jsonProjects.length,
@@ -322,7 +465,13 @@ app.get('/api/stats', (req, res) => {
     formatBytes: formatBytes(totalSessionSize),
     formatProjectsBytes: formatBytes(totalProjectsSize),
     orphanedCount: orphaned.length,
-    orphanedSize: orphanedSize
+    orphanedSize: orphanedSize,
+    fileHistoryCount: fileHistory.length,
+    fileHistorySize: totalFileHistorySize,
+    formatFileHistoryBytes: formatBytes(totalFileHistorySize),
+    orphanedFileHistoryCount: orphanedFileHistory.length,
+    orphanedFileHistorySize: orphanedFileHistorySize,
+    formatOrphanedFileHistoryBytes: formatBytes(orphanedFileHistorySize)
   });
 });
 
@@ -453,6 +602,180 @@ app.post('/api/clean/sessions', async (req, res) => {
         }
 
         results.push({ dir, success: true, sessionEnvs: relatedSessionEnvs });
+      } else {
+        results.push({ dir, success: false, reason: 'Not found' });
+      }
+    }
+
+    if (pathsToTrash.length > 0) {
+      await trash(pathsToTrash);
+    }
+
+    res.json({ success: true, results, sessionEnvsMoved: allSessionEnvsMoved, backup: backup });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Clean up file-history data (move to trash) - creates backup first
+app.post('/api/clean/file-history', async (req, res) => {
+  const { dir } = req.body;
+  const fullPath = path.join(FILE_HISTORY_DIR, dir);
+
+  try {
+    // Create backup before cleanup
+    const backup = createConfigBackup();
+
+    if (fs.existsSync(fullPath)) {
+      const pathsToTrash = [fullPath];
+
+      // Also collect related session-env directories
+      const relatedSessionEnvs = [];
+      if (fs.existsSync(SESSION_ENV_DIR)) {
+        const sessionEnvDirs = fs.readdirSync(SESSION_ENV_DIR);
+        const matchingSessionEnvs = sessionEnvDirs.filter(env => env.toLowerCase() === dir.toLowerCase());
+        for (const sessionEnv of matchingSessionEnvs) {
+          const sessionEnvPath = path.join(SESSION_ENV_DIR, sessionEnv);
+          if (fs.existsSync(sessionEnvPath)) {
+            pathsToTrash.push(sessionEnvPath);
+            relatedSessionEnvs.push(sessionEnv);
+          }
+        }
+      }
+
+      await trash(pathsToTrash);
+      res.json({
+        success: true,
+        message: `Moved ${dir} and ${relatedSessionEnvs.length} related session-env(s) to trash`,
+        sessionEnvsMoved: relatedSessionEnvs,
+        backup: backup
+      });
+    } else {
+      res.json({ success: false, message: 'Directory not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Clean multiple file-history entries (move to trash) - creates backup first
+app.post('/api/clean/file-histories', async (req, res) => {
+  const { dirs } = req.body;
+  const results = [];
+
+  try {
+    // Create backup before cleanup
+    const backup = createConfigBackup();
+
+    const pathsToTrash = [];
+    const allSessionEnvsMoved = [];
+
+    for (const dir of dirs) {
+      const fullPath = path.join(FILE_HISTORY_DIR, dir);
+      if (fs.existsSync(fullPath)) {
+        pathsToTrash.push(fullPath);
+
+        // Also collect related session-env directories
+        if (fs.existsSync(SESSION_ENV_DIR)) {
+          const sessionEnvDirs = fs.readdirSync(SESSION_ENV_DIR);
+          const matchingSessionEnvs = sessionEnvDirs.filter(env => env.toLowerCase() === dir.toLowerCase());
+          for (const sessionEnv of matchingSessionEnvs) {
+            const sessionEnvPath = path.join(SESSION_ENV_DIR, sessionEnv);
+            if (fs.existsSync(sessionEnvPath)) {
+              pathsToTrash.push(sessionEnvPath);
+              allSessionEnvsMoved.push(sessionEnv);
+            }
+          }
+        }
+
+        results.push({ dir, success: true, sessionEnvs: [] });
+      } else {
+        results.push({ dir, success: false, reason: 'Not found' });
+      }
+    }
+
+    if (pathsToTrash.length > 0) {
+      await trash(pathsToTrash);
+    }
+
+    res.json({ success: true, results, sessionEnvsMoved: allSessionEnvsMoved, backup: backup });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Clean up orphaned file-history (move to trash) - creates backup first
+app.post('/api/clean/orphaned-file-history', async (req, res) => {
+  const { dir } = req.body;
+  const fullPath = path.join(FILE_HISTORY_DIR, dir);
+
+  try {
+    // Create backup before cleanup
+    const backup = createConfigBackup();
+
+    if (fs.existsSync(fullPath)) {
+      const pathsToTrash = [fullPath];
+
+      // Also collect related session-env directories
+      const relatedSessionEnvs = [];
+      if (fs.existsSync(SESSION_ENV_DIR)) {
+        const sessionEnvDirs = fs.readdirSync(SESSION_ENV_DIR);
+        const matchingSessionEnvs = sessionEnvDirs.filter(env => env.toLowerCase() === dir.toLowerCase());
+        for (const sessionEnv of matchingSessionEnvs) {
+          const sessionEnvPath = path.join(SESSION_ENV_DIR, sessionEnv);
+          if (fs.existsSync(sessionEnvPath)) {
+            pathsToTrash.push(sessionEnvPath);
+            relatedSessionEnvs.push(sessionEnv);
+          }
+        }
+      }
+
+      await trash(pathsToTrash);
+      res.json({
+        success: true,
+        message: `Moved orphaned file-history ${dir} and ${relatedSessionEnvs.length} related session-env(s) to trash`,
+        sessionEnvsMoved: relatedSessionEnvs,
+        backup: backup
+      });
+    } else {
+      res.json({ success: false, message: 'Directory not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Clean multiple orphaned file-history entries (move to trash) - creates backup first
+app.post('/api/clean/orphaned-file-histories', async (req, res) => {
+  const { dirs } = req.body;
+  const results = [];
+
+  try {
+    // Create backup before cleanup
+    const backup = createConfigBackup();
+
+    const pathsToTrash = [];
+    const allSessionEnvsMoved = [];
+
+    for (const dir of dirs) {
+      const fullPath = path.join(FILE_HISTORY_DIR, dir);
+      if (fs.existsSync(fullPath)) {
+        pathsToTrash.push(fullPath);
+
+        // Also collect related session-env directories
+        if (fs.existsSync(SESSION_ENV_DIR)) {
+          const sessionEnvDirs = fs.readdirSync(SESSION_ENV_DIR);
+          const matchingSessionEnvs = sessionEnvDirs.filter(env => env.toLowerCase() === dir.toLowerCase());
+          for (const sessionEnv of matchingSessionEnvs) {
+            const sessionEnvPath = path.join(SESSION_ENV_DIR, sessionEnv);
+            if (fs.existsSync(sessionEnvPath)) {
+              pathsToTrash.push(sessionEnvPath);
+              allSessionEnvsMoved.push(sessionEnv);
+            }
+          }
+        }
+
+        results.push({ dir, success: true, sessionEnvs: [] });
       } else {
         results.push({ dir, success: false, reason: 'Not found' });
       }

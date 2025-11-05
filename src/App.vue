@@ -128,6 +128,108 @@
       </div>
     </div>
 
+    <!-- File History Tab -->
+    <div v-if="activeTab === 'file-history'" class="tab-content active">
+      <div class="info-note">
+        <p><strong>File History:</strong> Version history and snapshots of files edited during Claude Code sessions. These records accumulate over time and can be safely cleaned up to save disk space.</p>
+      </div>
+      <div class="bulk-actions">
+        <div class="select-all-container">
+          <input
+            type="checkbox"
+            id="select-all-file-history"
+            class="checkbox"
+            :checked="allFileHistorySelected"
+            @change="toggleAllFileHistory"
+          />
+          <label for="select-all-file-history">Select All</label>
+        </div>
+        <button class="danger" @click="cleanSelectedFileHistory" style="margin-left: auto">
+          Move to Trash
+        </button>
+      </div>
+
+      <div v-if="fileHistory.length > 0" class="project-list">
+        <div v-for="history in fileHistory" :key="history.dir" class="project-item">
+          <div class="project-info">
+            <div class="project-name">{{ history.dir }}</div>
+            <div v-if="history.sessionEnvs && history.sessionEnvs.length > 0" class="session-envs-list">
+              <div class="session-envs-label">Session Env(s): {{ history.sessionEnvs.length }}</div>
+              <div v-for="env in history.sessionEnvs" :key="env" class="session-env-item">{{ env }}</div>
+            </div>
+            <div class="project-meta">
+              <span class="size-indicator">Size: {{ formatBytes(history.size) }}</span>
+              <span>Files/Dirs: {{ history.files }}</span>
+            </div>
+          </div>
+          <div class="project-actions">
+            <input
+              type="checkbox"
+              class="checkbox file-history-checkbox"
+              :checked="selectedFileHistory.has(history.dir)"
+              @change="toggleFileHistoryCheckbox(history.dir)"
+            />
+            <button @click="cleanFileHistory(history.dir)">Clean</button>
+          </div>
+        </div>
+      </div>
+      <div v-else class="empty-state">
+        <h3>No file history found</h3>
+      </div>
+    </div>
+
+    <!-- Orphaned File History Tab -->
+    <div v-if="activeTab === 'orphaned-file-history'" class="tab-content active">
+      <div class="info-note">
+        <p><strong>Orphaned File History:</strong> File history entries that don't correspond to any active projects. These can be safely cleaned up to reclaim disk space.</p>
+      </div>
+      <div class="bulk-actions">
+        <div class="select-all-container">
+          <input
+            type="checkbox"
+            id="select-all-orphaned-file-history"
+            class="checkbox"
+            :checked="allOrphanedFileHistorySelected"
+            @change="toggleAllOrphanedFileHistory"
+          />
+          <label for="select-all-orphaned-file-history">Select All</label>
+        </div>
+        <button class="danger" @click="cleanSelectedOrphanedFileHistory" style="margin-left: auto">
+          Move to Trash
+        </button>
+      </div>
+
+      <div v-if="orphanedFileHistory.length > 0" class="project-list">
+        <div v-for="history in orphanedFileHistory" :key="history.dir" class="project-item">
+          <div class="project-info">
+            <div class="project-name">{{ history.dir }}</div>
+            <div v-if="history.sessionEnvs && history.sessionEnvs.length > 0" class="session-envs-list">
+              <div class="session-envs-label">Session Env(s): {{ history.sessionEnvs.length }}</div>
+              <div v-for="env in history.sessionEnvs" :key="env" class="session-env-item">{{ env }}</div>
+            </div>
+            <div class="project-meta">
+              <span class="status-badge status-orphaned">Orphaned</span>
+              <span class="size-indicator">Size: {{ formatBytes(history.size) }}</span>
+              <span>Files/Dirs: {{ history.files }}</span>
+            </div>
+          </div>
+          <div class="project-actions">
+            <input
+              type="checkbox"
+              class="checkbox orphaned-file-history-checkbox"
+              :checked="selectedOrphanedFileHistory.has(history.dir)"
+              @change="toggleOrphanedFileHistoryCheckbox(history.dir)"
+            />
+            <button class="danger" @click="cleanOrphanedFileHistory(history.dir)">Clean</button>
+          </div>
+        </div>
+      </div>
+      <div v-else class="empty-state">
+        <h3>No orphaned file history found</h3>
+        <p>Great! All your file history is associated with active projects.</p>
+      </div>
+    </div>
+
     <!-- Orphaned Tab -->
     <div v-if="activeTab === 'orphaned'" class="tab-content active">
       <div class="bulk-actions">
@@ -282,10 +384,14 @@ const activeTab = ref('json-projects');
 const jsonProjects = ref([]);
 const sessions = ref([]);
 const orphaned = ref([]);
+const fileHistory = ref([]);
+const orphanedFileHistory = ref([]);
 const backups = ref([]);
 const stats = ref({});
 const selectedSessions = ref(new Set());
 const selectedOrphaned = ref(new Set());
+const selectedFileHistory = ref(new Set());
+const selectedOrphanedFileHistory = ref(new Set());
 const successMessage = ref('');
 const errorMessage = ref('');
 const showConfirmation = ref(false);
@@ -296,6 +402,8 @@ let confirmationCallback = null;
 const tabs = [
   { id: 'json-projects', label: 'Projects (.claude.json)' },
   { id: 'sessions', label: 'Session Data (.claude/projects)' },
+  { id: 'file-history', label: 'File History' },
+  { id: 'orphaned-file-history', label: 'Orphaned File History' },
   { id: 'orphaned', label: 'Orphaned Projects' },
   { id: 'backups', label: 'Config Backups' }
 ];
@@ -307,6 +415,14 @@ const allSessionsSelected = computed(() => {
 
 const allOrphanedSelected = computed(() => {
   return orphaned.value.length > 0 && orphaned.value.every(o => selectedOrphaned.value.has(o.dir));
+});
+
+const allFileHistorySelected = computed(() => {
+  return fileHistory.value.length > 0 && fileHistory.value.every(f => selectedFileHistory.value.has(f.dir));
+});
+
+const allOrphanedFileHistorySelected = computed(() => {
+  return orphanedFileHistory.value.length > 0 && orphanedFileHistory.value.every(f => selectedOrphanedFileHistory.value.has(f.dir));
 });
 
 // Helper functions
@@ -359,6 +475,10 @@ function getTabCount(tabId) {
       return jsonProjects.value.length;
     case 'sessions':
       return sessions.value.length;
+    case 'file-history':
+      return fileHistory.value.length;
+    case 'orphaned-file-history':
+      return orphanedFileHistory.value.length;
     case 'orphaned':
       return orphaned.value.length;
     case 'backups':
@@ -372,6 +492,10 @@ function getTabSelected(tabId) {
   switch (tabId) {
     case 'sessions':
       return selectedSessions.value.size > 0 ? selectedSessions.value.size : null;
+    case 'file-history':
+      return selectedFileHistory.value.size > 0 ? selectedFileHistory.value.size : null;
+    case 'orphaned-file-history':
+      return selectedOrphanedFileHistory.value.size > 0 ? selectedOrphanedFileHistory.value.size : null;
     case 'orphaned':
       return selectedOrphaned.value.size > 0 ? selectedOrphaned.value.size : null;
     default:
@@ -398,6 +522,15 @@ function toggleOrphanedCheckbox(dir) {
   selectedOrphaned.value = new Set(selectedOrphaned.value);
 }
 
+function toggleFileHistoryCheckbox(dir) {
+  if (selectedFileHistory.value.has(dir)) {
+    selectedFileHistory.value.delete(dir);
+  } else {
+    selectedFileHistory.value.add(dir);
+  }
+  selectedFileHistory.value = new Set(selectedFileHistory.value);
+}
+
 function toggleAllSessions() {
   if (allSessionsSelected.value) {
     selectedSessions.value.clear();
@@ -414,6 +547,15 @@ function toggleAllOrphaned() {
     orphaned.value.forEach(o => selectedOrphaned.value.add(o.dir));
   }
   selectedOrphaned.value = new Set(selectedOrphaned.value);
+}
+
+function toggleAllFileHistory() {
+  if (allFileHistorySelected.value) {
+    selectedFileHistory.value.clear();
+  } else {
+    fileHistory.value.forEach(f => selectedFileHistory.value.add(f.dir));
+  }
+  selectedFileHistory.value = new Set(selectedFileHistory.value);
 }
 
 // Confirmation dialog
@@ -438,9 +580,11 @@ function cancelConfirmation() {
 // API calls
 async function loadData() {
   try {
-    const [jsonRes, sessionsRes, orphanedRes, statsRes, backupsRes] = await Promise.all([
+    const [jsonRes, sessionsRes, fileHistoryRes, orphanedFileHistoryRes, orphanedRes, statsRes, backupsRes] = await Promise.all([
       fetch('/api/projects/json'),
       fetch('/api/projects/sessions'),
+      fetch('/api/projects/file-history'),
+      fetch('/api/projects/orphaned-file-history'),
       fetch('/api/projects/orphaned'),
       fetch('/api/stats'),
       fetch('/api/backups')
@@ -448,6 +592,8 @@ async function loadData() {
 
     jsonProjects.value = await jsonRes.json();
     sessions.value = await sessionsRes.json();
+    fileHistory.value = await fileHistoryRes.json();
+    orphanedFileHistory.value = await orphanedFileHistoryRes.json();
     orphaned.value = await orphanedRes.json();
     stats.value = await statsRes.json();
     backups.value = await backupsRes.json();
@@ -559,6 +705,138 @@ async function deleteSelectedOrphaned() {
         if (data.success) {
           showSuccess(`Moved ${data.results.filter(r => r.success).length} orphaned project(s) to trash. Backup created: ${data.backup?.filename || 'unknown'}`);
           selectedOrphaned.value.clear();
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+async function cleanFileHistory(dir) {
+  showConfirmationDialog(
+    'Move File History to Trash',
+    `Move this file history to trash?\n\nDirectory: ${dir}`,
+    async () => {
+      try {
+        const res = await fetch('/api/clean/file-history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dir })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess('File history moved to trash. Backup created: ' + (data.backup?.filename || 'unknown'));
+          selectedFileHistory.value.delete(dir);
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+async function cleanSelectedFileHistory() {
+  if (selectedFileHistory.value.size === 0) {
+    showError('No file history selected');
+    return;
+  }
+
+  showConfirmationDialog(
+    'Move Selected File History to Trash',
+    `Move ${selectedFileHistory.value.size} file history(ies) to trash?`,
+    async () => {
+      try {
+        const res = await fetch('/api/clean/file-histories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dirs: Array.from(selectedFileHistory.value) })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess(`Moved ${data.results.filter(r => r.success).length} file history(ies) to trash. Backup created: ${data.backup?.filename || 'unknown'}`);
+          selectedFileHistory.value.clear();
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+function toggleOrphanedFileHistoryCheckbox(dir) {
+  if (selectedOrphanedFileHistory.value.has(dir)) {
+    selectedOrphanedFileHistory.value.delete(dir);
+  } else {
+    selectedOrphanedFileHistory.value.add(dir);
+  }
+  selectedOrphanedFileHistory.value = new Set(selectedOrphanedFileHistory.value);
+}
+
+function toggleAllOrphanedFileHistory() {
+  if (allOrphanedFileHistorySelected.value) {
+    selectedOrphanedFileHistory.value.clear();
+  } else {
+    orphanedFileHistory.value.forEach(f => selectedOrphanedFileHistory.value.add(f.dir));
+  }
+  selectedOrphanedFileHistory.value = new Set(selectedOrphanedFileHistory.value);
+}
+
+async function cleanOrphanedFileHistory(dir) {
+  showConfirmationDialog(
+    'Move Orphaned File History to Trash',
+    `Move this orphaned file history to trash?\n\nDirectory: ${dir}`,
+    async () => {
+      try {
+        const res = await fetch('/api/clean/orphaned-file-history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dir })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess('Orphaned file history moved to trash. Backup created: ' + (data.backup?.filename || 'unknown'));
+          selectedOrphanedFileHistory.value.delete(dir);
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+async function cleanSelectedOrphanedFileHistory() {
+  if (selectedOrphanedFileHistory.value.size === 0) {
+    showError('No orphaned file history selected');
+    return;
+  }
+
+  showConfirmationDialog(
+    'Move Selected Orphaned File History to Trash',
+    `Move ${selectedOrphanedFileHistory.value.size} orphaned file history(ies) to trash?`,
+    async () => {
+      try {
+        const res = await fetch('/api/clean/orphaned-file-histories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dirs: Array.from(selectedOrphanedFileHistory.value) })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess(`Moved ${data.results.filter(r => r.success).length} orphaned file history(ies) to trash. Backup created: ${data.backup?.filename || 'unknown'}`);
+          selectedOrphanedFileHistory.value.clear();
           loadData();
         } else {
           showError(data.message || 'Failed to move to trash');
