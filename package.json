@@ -1,0 +1,29 @@
+{
+  "name": "cc-cleaner",
+  "version": "1.0.0",
+  "description": "A web-based GUI tool to clean Claude Code projects",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "trash": "^7.0.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vue": "^3.3.0"
+  },
+  "keywords": [
+    "claude",
+    "cleaner",
+    "projects"
+  ],
+  "author": "",
+  "license": "MIT"
+}
