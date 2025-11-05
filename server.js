@@ -21,6 +21,8 @@ const CLAUDE_DIR = path.join(HOME, '.claude');
 const PROJECTS_DIR = path.join(HOME, '.claude', 'projects');
 const SESSION_ENV_DIR = path.join(HOME, '.claude', 'session-env');
 const FILE_HISTORY_DIR = path.join(HOME, '.claude', 'file-history');
+const DEBUG_DIR = path.join(HOME, '.claude', 'debug');
+const TODOS_DIR = path.join(HOME, '.claude', 'todos');
 const CC_CLEANER_DIR = path.join(HOME, '.cc-cleaner');
 const CONFIG_BACKUP_DIR = path.join(HOME, '.cc-cleaner', 'config-copy');
 const CC_CLEANER_BACKUP_DIR = path.join(HOME, '.cc-cleaner', 'backup');
@@ -410,6 +412,222 @@ function getOrphanedFileHistory() {
   }
 }
 
+// Get debug files
+function getDebugFiles() {
+  try {
+    if (!fs.existsSync(DEBUG_DIR)) return [];
+
+    const files = fs.readdirSync(DEBUG_DIR);
+    return files
+      .filter(file => {
+        // Skip system files and hidden files
+        if (file.startsWith('.')) return false;
+        // Skip the "latest" file
+        if (file === 'latest') return false;
+
+        const fullPath = path.join(DEBUG_DIR, file);
+        // Only include files, not directories
+        try {
+          return fs.statSync(fullPath).isFile();
+        } catch {
+          return false;
+        }
+      })
+      .map(file => {
+        const fullPath = path.join(DEBUG_DIR, file);
+        const stats = fs.statSync(fullPath);
+
+        return {
+          filename: file,
+          fullPath: fullPath,
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime
+        };
+      })
+      .sort((a, b) => new Date(b.modified) - new Date(a.modified)); // Sort by newest first
+  } catch (error) {
+    console.error('Error reading debug directory:', error);
+    return [];
+  }
+}
+
+// Get orphaned debug files (files that don't correspond to any active session)
+function getOrphanedDebugFiles() {
+  try {
+    if (!fs.existsSync(DEBUG_DIR)) return [];
+
+    // Get all active session UUIDs
+    const allSessionUuids = new Set();
+    if (fs.existsSync(SESSION_ENV_DIR)) {
+      const sessionEnvDirs = fs.readdirSync(SESSION_ENV_DIR);
+      sessionEnvDirs.forEach(dir => {
+        if (!dir.startsWith('.')) {
+          allSessionUuids.add(dir.toLowerCase());
+        }
+      });
+    }
+
+    // Get debug files
+    const files = fs.readdirSync(DEBUG_DIR);
+    return files
+      .filter(file => {
+        // Skip system files and hidden files
+        if (file.startsWith('.')) return false;
+        // Skip the "latest" file
+        if (file === 'latest') return false;
+
+        const fullPath = path.join(DEBUG_DIR, file);
+        // Only include files
+        try {
+          if (!fs.statSync(fullPath).isFile()) return false;
+        } catch {
+          return false;
+        }
+
+        // Extract UUID from filename (format: UUID.txt or similar)
+        const fileUuid = file.split('.')[0];
+
+        // Check if this UUID exists in any active session
+        return !allSessionUuids.has(fileUuid.toLowerCase());
+      })
+      .map(file => {
+        const fullPath = path.join(DEBUG_DIR, file);
+        const stats = fs.statSync(fullPath);
+
+        return {
+          filename: file,
+          fullPath: fullPath,
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime
+        };
+      })
+      .sort((a, b) => new Date(b.modified) - new Date(a.modified)); // Sort by newest first
+  } catch (error) {
+    console.error('Error reading orphaned debug files:', error);
+    return [];
+  }
+}
+
+// Get todos files
+function getTodosFiles() {
+  try {
+    if (!fs.existsSync(TODOS_DIR)) return [];
+
+    // Get all active session UUIDs
+    const allSessionUuids = new Set();
+    if (fs.existsSync(SESSION_ENV_DIR)) {
+      const sessionEnvDirs = fs.readdirSync(SESSION_ENV_DIR);
+      sessionEnvDirs.forEach(dir => {
+        if (!dir.startsWith('.')) {
+          allSessionUuids.add(dir.toLowerCase());
+        }
+      });
+    }
+
+    const files = fs.readdirSync(TODOS_DIR);
+    return files
+      .filter(file => {
+        // Skip system files and hidden files
+        if (file.startsWith('.')) return false;
+
+        const fullPath = path.join(TODOS_DIR, file);
+        // Only include files, not directories
+        try {
+          return fs.statSync(fullPath).isFile();
+        } catch {
+          return false;
+        }
+      })
+      .filter(file => {
+        // Extract UUID from filename (format: <UUID>-agent-<UUID>.json)
+        const fileUuid = file.split('-agent-')[0];
+        // Only include files where UUID matches an active session
+        return allSessionUuids.has(fileUuid.toLowerCase());
+      })
+      .map(file => {
+        const fullPath = path.join(TODOS_DIR, file);
+        const stats = fs.statSync(fullPath);
+
+        // Extract UUID from filename
+        const fileUuid = file.split('-agent-')[0];
+
+        return {
+          filename: file,
+          fullPath: fullPath,
+          uuid: fileUuid,
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime
+        };
+      })
+      .sort((a, b) => new Date(b.modified) - new Date(a.modified)); // Sort by newest first
+  } catch (error) {
+    console.error('Error reading todos files:', error);
+    return [];
+  }
+}
+
+// Get orphaned todos files (files that don't correspond to any active session)
+function getOrphanedTodosFiles() {
+  try {
+    if (!fs.existsSync(TODOS_DIR)) return [];
+
+    // Get all active session UUIDs
+    const allSessionUuids = new Set();
+    if (fs.existsSync(SESSION_ENV_DIR)) {
+      const sessionEnvDirs = fs.readdirSync(SESSION_ENV_DIR);
+      sessionEnvDirs.forEach(dir => {
+        if (!dir.startsWith('.')) {
+          allSessionUuids.add(dir.toLowerCase());
+        }
+      });
+    }
+
+    const files = fs.readdirSync(TODOS_DIR);
+    return files
+      .filter(file => {
+        // Skip system files and hidden files
+        if (file.startsWith('.')) return false;
+
+        const fullPath = path.join(TODOS_DIR, file);
+        // Only include files
+        try {
+          if (!fs.statSync(fullPath).isFile()) return false;
+        } catch {
+          return false;
+        }
+
+        // Extract UUID from filename (format: <UUID>-agent-<UUID>.json)
+        const fileUuid = file.split('-agent-')[0];
+
+        // Check if this UUID exists in any active session
+        return !allSessionUuids.has(fileUuid.toLowerCase());
+      })
+      .map(file => {
+        const fullPath = path.join(TODOS_DIR, file);
+        const stats = fs.statSync(fullPath);
+
+        // Extract UUID from filename
+        const fileUuid = file.split('-agent-')[0];
+
+        return {
+          filename: file,
+          fullPath: fullPath,
+          uuid: fileUuid,
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime
+        };
+      })
+      .sort((a, b) => new Date(b.modified) - new Date(a.modified)); // Sort by newest first
+  } catch (error) {
+    console.error('Error reading orphaned todos files:', error);
+    return [];
+  }
+}
+
 // API Endpoints
 app.get('/api/projects/json', (req, res) => {
   const projects = getJsonProjects().map(p => ({
@@ -444,18 +662,46 @@ app.get('/api/projects/orphaned-file-history', (req, res) => {
   res.json(orphanedFileHistory);
 });
 
+app.get('/api/projects/debug', (req, res) => {
+  const debugFiles = getDebugFiles();
+  res.json(debugFiles);
+});
+
+app.get('/api/projects/orphaned-debug', (req, res) => {
+  const orphanedDebug = getOrphanedDebugFiles();
+  res.json(orphanedDebug);
+});
+
+app.get('/api/projects/todos', (req, res) => {
+  const todos = getTodosFiles();
+  res.json(todos);
+});
+
+app.get('/api/projects/orphaned-todos', (req, res) => {
+  const orphanedTodos = getOrphanedTodosFiles();
+  res.json(orphanedTodos);
+});
+
 app.get('/api/stats', (req, res) => {
   const jsonProjects = getJsonProjects();
   const sessions = getSessionProjects();
   const orphaned = getOrphanedProjects();
   const fileHistory = getFileHistoryProjects();
   const orphanedFileHistory = getOrphanedFileHistory();
+  const debugFiles = getDebugFiles();
+  const orphanedDebugFiles = getOrphanedDebugFiles();
+  const todos = getTodosFiles();
+  const orphanedTodos = getOrphanedTodosFiles();
 
   const totalSessionSize = sessions.reduce((sum, s) => sum + s.size, 0);
   const orphanedSize = orphaned.reduce((sum, o) => sum + o.size, 0);
   const totalProjectsSize = sessions.reduce((sum, s) => sum + s.size, 0);
   const totalFileHistorySize = fileHistory.reduce((sum, f) => sum + f.size, 0);
   const orphanedFileHistorySize = orphanedFileHistory.reduce((sum, f) => sum + f.size, 0);
+  const totalDebugSize = debugFiles.reduce((sum, f) => sum + f.size, 0);
+  const orphanedDebugSize = orphanedDebugFiles.reduce((sum, f) => sum + f.size, 0);
+  const totalTodosSize = todos.reduce((sum, f) => sum + f.size, 0);
+  const orphanedTodosSize = orphanedTodos.reduce((sum, f) => sum + f.size, 0);
 
   res.json({
     totalProjects: jsonProjects.length,
@@ -471,7 +717,19 @@ app.get('/api/stats', (req, res) => {
     formatFileHistoryBytes: formatBytes(totalFileHistorySize),
     orphanedFileHistoryCount: orphanedFileHistory.length,
     orphanedFileHistorySize: orphanedFileHistorySize,
-    formatOrphanedFileHistoryBytes: formatBytes(orphanedFileHistorySize)
+    formatOrphanedFileHistoryBytes: formatBytes(orphanedFileHistorySize),
+    debugCount: debugFiles.length,
+    debugSize: totalDebugSize,
+    formatDebugBytes: formatBytes(totalDebugSize),
+    orphanedDebugCount: orphanedDebugFiles.length,
+    orphanedDebugSize: orphanedDebugSize,
+    formatOrphanedDebugBytes: formatBytes(orphanedDebugSize),
+    todosCount: todos.length,
+    todosSize: totalTodosSize,
+    formatTodosBytes: formatBytes(totalTodosSize),
+    orphanedTodosCount: orphanedTodos.length,
+    orphanedTodosSize: orphanedTodosSize,
+    formatOrphanedTodosBytes: formatBytes(orphanedTodosSize)
   });
 });
 
@@ -786,6 +1044,250 @@ app.post('/api/clean/orphaned-file-histories', async (req, res) => {
     }
 
     res.json({ success: true, results, sessionEnvsMoved: allSessionEnvsMoved, backup: backup });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Clean debug file (move to trash)
+app.post('/api/clean/debug', async (req, res) => {
+  const { filename } = req.body;
+  const fullPath = path.join(DEBUG_DIR, filename);
+
+  try {
+    // Validate debug file exists and is in the debug directory
+    if (!fs.existsSync(fullPath) || !fullPath.startsWith(DEBUG_DIR)) {
+      return res.status(400).json({ success: false, message: 'Invalid debug file' });
+    }
+
+    // Move to trash instead of permanent deletion
+    try {
+      await trash(fullPath);
+      res.json({ success: true, message: 'Debug file moved to trash' });
+    } catch (trashError) {
+      res.status(500).json({ success: false, message: 'Failed to move debug file to trash: ' + trashError.message });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Clean multiple debug files (move to trash)
+app.post('/api/clean/debug-files', async (req, res) => {
+  const { filenames } = req.body;
+
+  if (!Array.isArray(filenames) || filenames.length === 0) {
+    return res.status(400).json({ success: false, message: 'Invalid filenames' });
+  }
+
+  const results = [];
+  const pathsToTrash = [];
+
+  for (const filename of filenames) {
+    try {
+      const fullPath = path.join(DEBUG_DIR, filename);
+
+      // Validate debug file exists and is in the debug directory
+      if (!fs.existsSync(fullPath) || !fullPath.startsWith(DEBUG_DIR)) {
+        results.push({ filename, success: false, message: 'Invalid debug file' });
+        continue;
+      }
+
+      pathsToTrash.push(fullPath);
+      results.push({ filename, success: true });
+    } catch (error) {
+      results.push({ filename, success: false, message: error.message });
+    }
+  }
+
+  try {
+    if (pathsToTrash.length > 0) {
+      await trash(pathsToTrash);
+    }
+    res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Clean single orphaned debug file (move to trash)
+app.post('/api/clean/orphaned-debug', async (req, res) => {
+  const { filename } = req.body;
+  const fullPath = path.join(DEBUG_DIR, filename);
+
+  try {
+    // Validate debug file exists and is in the debug directory
+    if (!fs.existsSync(fullPath) || !fullPath.startsWith(DEBUG_DIR)) {
+      return res.status(400).json({ success: false, message: 'Invalid debug file' });
+    }
+
+    // Move to trash instead of permanent deletion
+    try {
+      await trash(fullPath);
+      res.json({ success: true, message: 'Orphaned debug file moved to trash' });
+    } catch (trashError) {
+      res.status(500).json({ success: false, message: 'Failed to move orphaned debug file to trash: ' + trashError.message });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Clean multiple orphaned debug files (move to trash)
+app.post('/api/clean/orphaned-debug-files', async (req, res) => {
+  const { filenames } = req.body;
+
+  if (!Array.isArray(filenames) || filenames.length === 0) {
+    return res.status(400).json({ success: false, message: 'Invalid filenames' });
+  }
+
+  const results = [];
+  const pathsToTrash = [];
+
+  for (const filename of filenames) {
+    try {
+      const fullPath = path.join(DEBUG_DIR, filename);
+
+      // Validate debug file exists and is in the debug directory
+      if (!fs.existsSync(fullPath) || !fullPath.startsWith(DEBUG_DIR)) {
+        results.push({ filename, success: false, message: 'Invalid debug file' });
+        continue;
+      }
+
+      pathsToTrash.push(fullPath);
+      results.push({ filename, success: true });
+    } catch (error) {
+      results.push({ filename, success: false, message: error.message });
+    }
+  }
+
+  try {
+    if (pathsToTrash.length > 0) {
+      await trash(pathsToTrash);
+    }
+    res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Clean single todos file (move to trash)
+app.post('/api/clean/todo', async (req, res) => {
+  const { filename } = req.body;
+  const fullPath = path.join(TODOS_DIR, filename);
+
+  try {
+    // Validate todos file exists and is in the todos directory
+    if (!fs.existsSync(fullPath) || !fullPath.startsWith(TODOS_DIR)) {
+      return res.status(400).json({ success: false, message: 'Invalid todos file' });
+    }
+
+    // Move to trash instead of permanent deletion
+    try {
+      await trash(fullPath);
+      res.json({ success: true, message: 'Todos file moved to trash' });
+    } catch (trashError) {
+      res.status(500).json({ success: false, message: 'Failed to move todos file to trash: ' + trashError.message });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Clean multiple todos files (move to trash)
+app.post('/api/clean/todos', async (req, res) => {
+  const { filenames } = req.body;
+
+  if (!Array.isArray(filenames) || filenames.length === 0) {
+    return res.status(400).json({ success: false, message: 'Invalid filenames' });
+  }
+
+  const results = [];
+  const pathsToTrash = [];
+
+  for (const filename of filenames) {
+    try {
+      const fullPath = path.join(TODOS_DIR, filename);
+
+      // Validate todos file exists and is in the todos directory
+      if (!fs.existsSync(fullPath) || !fullPath.startsWith(TODOS_DIR)) {
+        results.push({ filename, success: false, message: 'Invalid todos file' });
+        continue;
+      }
+
+      pathsToTrash.push(fullPath);
+      results.push({ filename, success: true });
+    } catch (error) {
+      results.push({ filename, success: false, message: error.message });
+    }
+  }
+
+  try {
+    if (pathsToTrash.length > 0) {
+      await trash(pathsToTrash);
+    }
+    res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Clean single orphaned todos file (move to trash)
+app.post('/api/clean/orphaned-todo', async (req, res) => {
+  const { filename } = req.body;
+  const fullPath = path.join(TODOS_DIR, filename);
+
+  try {
+    // Validate todos file exists and is in the todos directory
+    if (!fs.existsSync(fullPath) || !fullPath.startsWith(TODOS_DIR)) {
+      return res.status(400).json({ success: false, message: 'Invalid todos file' });
+    }
+
+    // Move to trash instead of permanent deletion
+    try {
+      await trash(fullPath);
+      res.json({ success: true, message: 'Orphaned todos file moved to trash' });
+    } catch (trashError) {
+      res.status(500).json({ success: false, message: 'Failed to move orphaned todos file to trash: ' + trashError.message });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Clean multiple orphaned todos files (move to trash)
+app.post('/api/clean/orphaned-todos', async (req, res) => {
+  const { filenames } = req.body;
+
+  if (!Array.isArray(filenames) || filenames.length === 0) {
+    return res.status(400).json({ success: false, message: 'Invalid filenames' });
+  }
+
+  const results = [];
+  const pathsToTrash = [];
+
+  for (const filename of filenames) {
+    try {
+      const fullPath = path.join(TODOS_DIR, filename);
+
+      // Validate todos file exists and is in the todos directory
+      if (!fs.existsSync(fullPath) || !fullPath.startsWith(TODOS_DIR)) {
+        results.push({ filename, success: false, message: 'Invalid todos file' });
+        continue;
+      }
+
+      pathsToTrash.push(fullPath);
+      results.push({ filename, success: true });
+    } catch (error) {
+      results.push({ filename, success: false, message: error.message });
+    }
+  }
+
+  try {
+    if (pathsToTrash.length > 0) {
+      await trash(pathsToTrash);
+    }
+    res.json({ success: true, results });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

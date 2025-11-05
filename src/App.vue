@@ -283,6 +283,198 @@
       </div>
     </div>
 
+    <!-- Debug Tab -->
+    <div v-if="activeTab === 'debug'" class="tab-content active">
+      <div class="info-note">
+        <p><strong>Debug Files:</strong> Debug logs and diagnostic information from Claude Code. These files are generated during sessions and can be safely removed to free up disk space.</p>
+      </div>
+      <div class="bulk-actions">
+        <div class="select-all-container">
+          <input
+            type="checkbox"
+            id="select-all-debug"
+            class="checkbox"
+            :checked="allDebugFilesSelected"
+            @change="toggleAllDebugFiles"
+          />
+          <label for="select-all-debug">Select All</label>
+        </div>
+        <button class="danger" @click="cleanSelectedDebugFiles" style="margin-left: auto">
+          Move to Trash
+        </button>
+      </div>
+
+      <div v-if="debugFiles.length > 0" class="project-list">
+        <div v-for="debug in debugFiles" :key="debug.filename" class="project-item">
+          <div class="project-info">
+            <div class="project-name">{{ debug.filename }}</div>
+            <div class="project-meta">
+              <span class="size-indicator">Size: {{ formatBytes(debug.size) }}</span>
+              <span>Created: {{ formatDate(debug.created) }}</span>
+              <span>Modified: {{ formatDate(debug.modified) }}</span>
+            </div>
+          </div>
+          <div class="project-actions">
+            <input
+              type="checkbox"
+              class="checkbox debug-checkbox"
+              :checked="selectedDebugFiles.has(debug.filename)"
+              @change="toggleDebugFileCheckbox(debug.filename)"
+            />
+            <button class="danger" @click="cleanDebugFile(debug.filename)">Remove</button>
+          </div>
+        </div>
+      </div>
+      <div v-else class="empty-state">
+        <h3>No debug files found</h3>
+      </div>
+    </div>
+
+    <!-- Orphaned Debug Tab -->
+    <div v-if="activeTab === 'orphaned-debug'" class="tab-content active">
+      <div class="info-note">
+        <p><strong>Orphaned Debug Files:</strong> Debug files that don't correspond to any active sessions. These can be safely removed to free up disk space.</p>
+      </div>
+      <div class="bulk-actions">
+        <div class="select-all-container">
+          <input
+            type="checkbox"
+            id="select-all-orphaned-debug"
+            class="checkbox"
+            :checked="allOrphanedDebugFilesSelected"
+            @change="toggleAllOrphanedDebugFiles"
+          />
+          <label for="select-all-orphaned-debug">Select All</label>
+        </div>
+        <button class="danger" @click="cleanSelectedOrphanedDebugFiles" style="margin-left: auto">
+          Move to Trash
+        </button>
+      </div>
+
+      <div v-if="orphanedDebugFiles.length > 0" class="project-list">
+        <div v-for="debug in orphanedDebugFiles" :key="debug.filename" class="project-item">
+          <div class="project-info">
+            <div class="project-name">{{ debug.filename }}</div>
+            <div class="project-meta">
+              <span class="status-badge status-orphaned">Orphaned</span>
+              <span class="size-indicator">Size: {{ formatBytes(debug.size) }}</span>
+              <span>Created: {{ formatDate(debug.created) }}</span>
+              <span>Modified: {{ formatDate(debug.modified) }}</span>
+            </div>
+          </div>
+          <div class="project-actions">
+            <input
+              type="checkbox"
+              class="checkbox orphaned-debug-checkbox"
+              :checked="selectedOrphanedDebugFiles.has(debug.filename)"
+              @change="toggleOrphanedDebugFileCheckbox(debug.filename)"
+            />
+            <button class="danger" @click="cleanOrphanedDebugFile(debug.filename)">Clean</button>
+          </div>
+        </div>
+      </div>
+      <div v-else class="empty-state">
+        <h3>No orphaned debug files found</h3>
+        <p>Great! All your debug files are associated with active sessions.</p>
+      </div>
+    </div>
+
+    <!-- Todos Tab -->
+    <div v-if="activeTab === 'todos'" class="tab-content active">
+      <div class="info-note">
+        <p><strong>Todos Files:</strong> Todo lists from Claude Code sessions. These files contain task tracking information from active sessions.</p>
+      </div>
+      <div class="bulk-actions">
+        <div class="select-all-container">
+          <input
+            type="checkbox"
+            id="select-all-todos"
+            class="checkbox"
+            :checked="allTodosSelected"
+            @change="toggleAllTodos"
+          />
+          <label for="select-all-todos">Select All</label>
+        </div>
+        <button class="danger" @click="cleanSelectedTodos" style="margin-left: auto">
+          Move to Trash
+        </button>
+      </div>
+
+      <div v-if="todosFiles.length > 0" class="project-list">
+        <div v-for="todo in todosFiles" :key="todo.filename" class="project-item">
+          <div class="project-info">
+            <div class="project-name">{{ todo.filename }}</div>
+            <div class="project-meta">
+              <span class="size-indicator">Size: {{ formatBytes(todo.size) }}</span>
+              <span>Created: {{ formatDate(todo.created) }}</span>
+              <span>Modified: {{ formatDate(todo.modified) }}</span>
+            </div>
+          </div>
+          <div class="project-actions">
+            <input
+              type="checkbox"
+              class="checkbox todos-checkbox"
+              :checked="selectedTodos.has(todo.filename)"
+              @change="toggleTodosCheckbox(todo.filename)"
+            />
+            <button class="danger" @click="cleanTodosFile(todo.filename)">Remove</button>
+          </div>
+        </div>
+      </div>
+      <div v-else class="empty-state">
+        <h3>No todos files found</h3>
+      </div>
+    </div>
+
+    <!-- Orphaned Todos Tab -->
+    <div v-if="activeTab === 'orphaned-todos'" class="tab-content active">
+      <div class="info-note">
+        <p><strong>Orphaned Todos Files:</strong> Todos files that don't correspond to any active sessions. These can be safely removed to free up disk space.</p>
+      </div>
+      <div class="bulk-actions">
+        <div class="select-all-container">
+          <input
+            type="checkbox"
+            id="select-all-orphaned-todos"
+            class="checkbox"
+            :checked="allOrphanedTodosSelected"
+            @change="toggleAllOrphanedTodos"
+          />
+          <label for="select-all-orphaned-todos">Select All</label>
+        </div>
+        <button class="danger" @click="cleanSelectedOrphanedTodos" style="margin-left: auto">
+          Move to Trash
+        </button>
+      </div>
+
+      <div v-if="orphanedTodosFiles.length > 0" class="project-list">
+        <div v-for="todo in orphanedTodosFiles" :key="todo.filename" class="project-item">
+          <div class="project-info">
+            <div class="project-name">{{ todo.filename }}</div>
+            <div class="project-meta">
+              <span class="status-badge status-orphaned">Orphaned</span>
+              <span class="size-indicator">Size: {{ formatBytes(todo.size) }}</span>
+              <span>Created: {{ formatDate(todo.created) }}</span>
+              <span>Modified: {{ formatDate(todo.modified) }}</span>
+            </div>
+          </div>
+          <div class="project-actions">
+            <input
+              type="checkbox"
+              class="checkbox orphaned-todos-checkbox"
+              :checked="selectedOrphanedTodos.has(todo.filename)"
+              @change="toggleOrphanedTodosCheckbox(todo.filename)"
+            />
+            <button class="danger" @click="cleanOrphanedTodosFile(todo.filename)">Clean</button>
+          </div>
+        </div>
+      </div>
+      <div v-else class="empty-state">
+        <h3>No orphaned todos files found</h3>
+        <p>Great! All your todos are associated with active sessions.</p>
+      </div>
+    </div>
+
     <!-- Backups Tab -->
     <div v-if="activeTab === 'backups'" class="tab-content active">
       <div class="bulk-actions">
@@ -411,12 +603,20 @@ const sessions = ref([]);
 const orphaned = ref([]);
 const fileHistory = ref([]);
 const orphanedFileHistory = ref([]);
+const debugFiles = ref([]);
+const orphanedDebugFiles = ref([]);
+const todosFiles = ref([]);
+const orphanedTodosFiles = ref([]);
 const backups = ref([]);
 const stats = ref({});
 const selectedSessions = ref(new Set());
 const selectedOrphaned = ref(new Set());
 const selectedFileHistory = ref(new Set());
 const selectedOrphanedFileHistory = ref(new Set());
+const selectedDebugFiles = ref(new Set());
+const selectedOrphanedDebugFiles = ref(new Set());
+const selectedTodos = ref(new Set());
+const selectedOrphanedTodos = ref(new Set());
 const selectedBackups = ref(new Set());
 const successMessage = ref('');
 const errorMessage = ref('');
@@ -431,6 +631,10 @@ const tabs = [
   { id: 'file-history', label: 'File History' },
   { id: 'orphaned-file-history', label: 'Orphaned File History' },
   { id: 'orphaned', label: 'Orphaned Projects' },
+  { id: 'debug', label: 'Debug' },
+  { id: 'orphaned-debug', label: 'Orphaned Debug' },
+  { id: 'todos', label: 'Todos' },
+  { id: 'orphaned-todos', label: 'Orphaned Todos' },
   { id: 'backups', label: 'Config Backups' }
 ];
 
@@ -449,6 +653,22 @@ const allFileHistorySelected = computed(() => {
 
 const allOrphanedFileHistorySelected = computed(() => {
   return orphanedFileHistory.value.length > 0 && orphanedFileHistory.value.every(f => selectedOrphanedFileHistory.value.has(f.dir));
+});
+
+const allDebugFilesSelected = computed(() => {
+  return debugFiles.value.length > 0 && debugFiles.value.every(f => selectedDebugFiles.value.has(f.filename));
+});
+
+const allOrphanedDebugFilesSelected = computed(() => {
+  return orphanedDebugFiles.value.length > 0 && orphanedDebugFiles.value.every(f => selectedOrphanedDebugFiles.value.has(f.filename));
+});
+
+const allTodosSelected = computed(() => {
+  return todosFiles.value.length > 0 && todosFiles.value.every(f => selectedTodos.value.has(f.filename));
+});
+
+const allOrphanedTodosSelected = computed(() => {
+  return orphanedTodosFiles.value.length > 0 && orphanedTodosFiles.value.every(f => selectedOrphanedTodos.value.has(f.filename));
 });
 
 const allBackupsSelected = computed(() => {
@@ -511,6 +731,14 @@ function getTabCount(tabId) {
       return orphanedFileHistory.value.length;
     case 'orphaned':
       return orphaned.value.length;
+    case 'debug':
+      return debugFiles.value.length;
+    case 'orphaned-debug':
+      return orphanedDebugFiles.value.length;
+    case 'todos':
+      return todosFiles.value.length;
+    case 'orphaned-todos':
+      return orphanedTodosFiles.value.length;
     case 'backups':
       return backups.value.length;
     default:
@@ -528,6 +756,14 @@ function getTabSelected(tabId) {
       return selectedOrphanedFileHistory.value.size > 0 ? selectedOrphanedFileHistory.value.size : null;
     case 'orphaned':
       return selectedOrphaned.value.size > 0 ? selectedOrphaned.value.size : null;
+    case 'debug':
+      return selectedDebugFiles.value.size > 0 ? selectedDebugFiles.value.size : null;
+    case 'orphaned-debug':
+      return selectedOrphanedDebugFiles.value.size > 0 ? selectedOrphanedDebugFiles.value.size : null;
+    case 'todos':
+      return selectedTodos.value.size > 0 ? selectedTodos.value.size : null;
+    case 'orphaned-todos':
+      return selectedOrphanedTodos.value.size > 0 ? selectedOrphanedTodos.value.size : null;
     default:
       return null;
   }
@@ -606,6 +842,78 @@ function toggleAllBackups() {
   selectedBackups.value = new Set(selectedBackups.value);
 }
 
+function toggleDebugFileCheckbox(filename) {
+  if (selectedDebugFiles.value.has(filename)) {
+    selectedDebugFiles.value.delete(filename);
+  } else {
+    selectedDebugFiles.value.add(filename);
+  }
+  selectedDebugFiles.value = new Set(selectedDebugFiles.value);
+}
+
+function toggleAllDebugFiles() {
+  if (allDebugFilesSelected.value) {
+    selectedDebugFiles.value.clear();
+  } else {
+    debugFiles.value.forEach(f => selectedDebugFiles.value.add(f.filename));
+  }
+  selectedDebugFiles.value = new Set(selectedDebugFiles.value);
+}
+
+function toggleOrphanedDebugFileCheckbox(filename) {
+  if (selectedOrphanedDebugFiles.value.has(filename)) {
+    selectedOrphanedDebugFiles.value.delete(filename);
+  } else {
+    selectedOrphanedDebugFiles.value.add(filename);
+  }
+  selectedOrphanedDebugFiles.value = new Set(selectedOrphanedDebugFiles.value);
+}
+
+function toggleAllOrphanedDebugFiles() {
+  if (allOrphanedDebugFilesSelected.value) {
+    selectedOrphanedDebugFiles.value.clear();
+  } else {
+    orphanedDebugFiles.value.forEach(f => selectedOrphanedDebugFiles.value.add(f.filename));
+  }
+  selectedOrphanedDebugFiles.value = new Set(selectedOrphanedDebugFiles.value);
+}
+
+function toggleTodosCheckbox(filename) {
+  if (selectedTodos.value.has(filename)) {
+    selectedTodos.value.delete(filename);
+  } else {
+    selectedTodos.value.add(filename);
+  }
+  selectedTodos.value = new Set(selectedTodos.value);
+}
+
+function toggleAllTodos() {
+  if (allTodosSelected.value) {
+    selectedTodos.value.clear();
+  } else {
+    todosFiles.value.forEach(f => selectedTodos.value.add(f.filename));
+  }
+  selectedTodos.value = new Set(selectedTodos.value);
+}
+
+function toggleOrphanedTodosCheckbox(filename) {
+  if (selectedOrphanedTodos.value.has(filename)) {
+    selectedOrphanedTodos.value.delete(filename);
+  } else {
+    selectedOrphanedTodos.value.add(filename);
+  }
+  selectedOrphanedTodos.value = new Set(selectedOrphanedTodos.value);
+}
+
+function toggleAllOrphanedTodos() {
+  if (allOrphanedTodosSelected.value) {
+    selectedOrphanedTodos.value.clear();
+  } else {
+    orphanedTodosFiles.value.forEach(f => selectedOrphanedTodos.value.add(f.filename));
+  }
+  selectedOrphanedTodos.value = new Set(selectedOrphanedTodos.value);
+}
+
 // Confirmation dialog
 function showConfirmationDialog(title, message, callback) {
   confirmationTitle.value = title;
@@ -628,12 +936,16 @@ function cancelConfirmation() {
 // API calls
 async function loadData() {
   try {
-    const [jsonRes, sessionsRes, fileHistoryRes, orphanedFileHistoryRes, orphanedRes, statsRes, backupsRes] = await Promise.all([
+    const [jsonRes, sessionsRes, fileHistoryRes, orphanedFileHistoryRes, orphanedRes, debugRes, orphanedDebugRes, todosRes, orphanedTodosRes, statsRes, backupsRes] = await Promise.all([
       fetch('/api/projects/json'),
       fetch('/api/projects/sessions'),
       fetch('/api/projects/file-history'),
       fetch('/api/projects/orphaned-file-history'),
       fetch('/api/projects/orphaned'),
+      fetch('/api/projects/debug'),
+      fetch('/api/projects/orphaned-debug'),
+      fetch('/api/projects/todos'),
+      fetch('/api/projects/orphaned-todos'),
       fetch('/api/stats'),
       fetch('/api/backups')
     ]);
@@ -643,6 +955,10 @@ async function loadData() {
     fileHistory.value = await fileHistoryRes.json();
     orphanedFileHistory.value = await orphanedFileHistoryRes.json();
     orphaned.value = await orphanedRes.json();
+    debugFiles.value = await debugRes.json();
+    orphanedDebugFiles.value = await orphanedDebugRes.json();
+    todosFiles.value = await todosRes.json();
+    orphanedTodosFiles.value = await orphanedTodosRes.json();
     stats.value = await statsRes.json();
     backups.value = await backupsRes.json();
   } catch (error) {
@@ -1002,6 +1318,234 @@ async function removeSelectedBackups() {
           loadData();
         } else {
           showError(data.message || 'Failed to move backups to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+async function cleanDebugFile(filename) {
+  showConfirmationDialog(
+    'Move Debug File to Trash',
+    `Move this debug file to trash?\n\n${filename}`,
+    async () => {
+      try {
+        const res = await fetch('/api/clean/debug', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess('Debug file moved to trash');
+          selectedDebugFiles.value.delete(filename);
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move debug file to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+async function cleanSelectedDebugFiles() {
+  if (selectedDebugFiles.value.size === 0) {
+    showError('No debug files selected');
+    return;
+  }
+
+  showConfirmationDialog(
+    'Move Selected Debug Files to Trash',
+    `Move ${selectedDebugFiles.value.size} debug file(s) to trash?`,
+    async () => {
+      try {
+        const res = await fetch('/api/clean/debug-files', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filenames: Array.from(selectedDebugFiles.value) })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess(`Moved ${data.results.filter(r => r.success).length} debug file(s) to trash`);
+          selectedDebugFiles.value.clear();
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move debug files to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+async function cleanOrphanedDebugFile(filename) {
+  showConfirmationDialog(
+    'Move Orphaned Debug File to Trash',
+    `Move this orphaned debug file to trash?\n\n${filename}`,
+    async () => {
+      try {
+        const res = await fetch('/api/clean/orphaned-debug', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess('Orphaned debug file moved to trash');
+          selectedOrphanedDebugFiles.value.delete(filename);
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move orphaned debug file to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+async function cleanSelectedOrphanedDebugFiles() {
+  if (selectedOrphanedDebugFiles.value.size === 0) {
+    showError('No orphaned debug files selected');
+    return;
+  }
+
+  showConfirmationDialog(
+    'Move Selected Orphaned Debug Files to Trash',
+    `Move ${selectedOrphanedDebugFiles.value.size} orphaned debug file(s) to trash?`,
+    async () => {
+      try {
+        const res = await fetch('/api/clean/orphaned-debug-files', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filenames: Array.from(selectedOrphanedDebugFiles.value) })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess(`Moved ${data.results.filter(r => r.success).length} orphaned debug file(s) to trash`);
+          selectedOrphanedDebugFiles.value.clear();
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move orphaned debug files to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+async function cleanTodosFile(filename) {
+  showConfirmationDialog(
+    'Move Todos File to Trash',
+    `Move this todos file to trash?\n\n${filename}`,
+    async () => {
+      try {
+        const res = await fetch('/api/clean/todo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess('Todos file moved to trash');
+          selectedTodos.value.delete(filename);
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move todos file to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+async function cleanSelectedTodos() {
+  if (selectedTodos.value.size === 0) {
+    showError('No todos files selected');
+    return;
+  }
+
+  showConfirmationDialog(
+    'Move Selected Todos Files to Trash',
+    `Move ${selectedTodos.value.size} todos file(s) to trash?`,
+    async () => {
+      try {
+        const res = await fetch('/api/clean/todos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filenames: Array.from(selectedTodos.value) })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess(`Moved ${data.results.filter(r => r.success).length} todos file(s) to trash`);
+          selectedTodos.value.clear();
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move todos files to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+async function cleanOrphanedTodosFile(filename) {
+  showConfirmationDialog(
+    'Move Orphaned Todos File to Trash',
+    `Move this orphaned todos file to trash?\n\n${filename}`,
+    async () => {
+      try {
+        const res = await fetch('/api/clean/orphaned-todo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess('Orphaned todos file moved to trash');
+          selectedOrphanedTodos.value.delete(filename);
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move orphaned todos file to trash');
+        }
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
+async function cleanSelectedOrphanedTodos() {
+  if (selectedOrphanedTodos.value.size === 0) {
+    showError('No orphaned todos files selected');
+    return;
+  }
+
+  showConfirmationDialog(
+    'Move Selected Orphaned Todos Files to Trash',
+    `Move ${selectedOrphanedTodos.value.size} orphaned todos file(s) to trash?`,
+    async () => {
+      try {
+        const res = await fetch('/api/clean/orphaned-todos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filenames: Array.from(selectedOrphanedTodos.value) })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showSuccess(`Moved ${data.results.filter(r => r.success).length} orphaned todos file(s) to trash`);
+          selectedOrphanedTodos.value.clear();
+          loadData();
+        } else {
+          showError(data.message || 'Failed to move orphaned todos files to trash');
         }
       } catch (error) {
         showError('Error: ' + error.message);
