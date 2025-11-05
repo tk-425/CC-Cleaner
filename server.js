@@ -540,12 +540,6 @@ function getTodosFiles() {
           return false;
         }
       })
-      .filter(file => {
-        // Extract UUID from filename (format: <UUID>-agent-<UUID>.json)
-        const fileUuid = file.split('-agent-')[0];
-        // Only include files where UUID matches an active session
-        return allSessionUuids.has(fileUuid.toLowerCase());
-      })
       .map(file => {
         const fullPath = path.join(TODOS_DIR, file);
         const stats = fs.statSync(fullPath);
@@ -695,7 +689,7 @@ app.get('/api/stats', (req, res) => {
 
   const totalSessionSize = sessions.reduce((sum, s) => sum + s.size, 0);
   const orphanedSize = orphaned.reduce((sum, o) => sum + o.size, 0);
-  const totalProjectsSize = sessions.reduce((sum, s) => sum + s.size, 0);
+  const totalProjectsSize = getDirSize(CLAUDE_DIR);
   const totalFileHistorySize = fileHistory.reduce((sum, f) => sum + f.size, 0);
   const orphanedFileHistorySize = orphanedFileHistory.reduce((sum, f) => sum + f.size, 0);
   const totalDebugSize = debugFiles.reduce((sum, f) => sum + f.size, 0);

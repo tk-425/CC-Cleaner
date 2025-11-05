@@ -14,12 +14,8 @@
             <span class="stat-value">{{ stats.totalProjects || 0 }}</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Projects Size</span>
+            <span class="stat-label">Claude Size</span>
             <span class="stat-value">{{ stats.formatProjectsBytes || '0 B' }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Orphaned</span>
-            <span class="stat-value">{{ stats.orphanedCount || 0 }}</span>
           </div>
         </div>
         <button class="primary" @click="createFullBackup" title="Create a full backup of your .claude directory">
@@ -28,18 +24,30 @@
       </div>
     </header>
 
-    <div class="tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        :class="['tab-button', { active: activeTab === tab.id }]"
-        @click="switchTab(tab.id)"
-      >
-        {{ tab.label }}
-        <span class="tab-count">{{ getTabCount(tab.id) }}</span>
-        <span v-if="getTabSelected(tab.id)" class="tab-selected">({{ getTabSelected(tab.id) }})</span>
-      </button>
-    </div>
+    <div class="main-container">
+      <aside class="sidebar">
+        <nav class="tabs">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            :class="['tab-button', { active: activeTab === tab.id }]"
+            @click="switchTab(tab.id)"
+          >
+            <span class="tab-label">{{ tab.label }}</span>
+            <div class="tab-info">
+              <span class="tab-count">{{ getTabCount(tab.id) }}</span>
+              <span v-if="getTabSelected(tab.id)" class="tab-selected">{{ getTabSelected(tab.id) }}</span>
+            </div>
+          </button>
+        </nav>
+        <div class="sidebar-footer">
+          <a href="https://github.com/tk-425/CC-Cleaner" target="_blank" rel="noopener noreferrer" title="View on GitHub">
+            <img src="/github.png" alt="GitHub" class="github-icon">
+          </a>
+        </div>
+      </aside>
+
+      <main class="content-area">
 
     <div v-if="successMessage" class="success-message show">
       {{ successMessage }}
@@ -50,8 +58,32 @@
 
     <!-- Projects Tab -->
     <div v-if="activeTab === 'json-projects'" class="tab-content active">
+      <div class="info-note">
+        <p><strong>Projects:</strong> Projects configured in your .claude.json file. These are the main project configurations tracked by Claude Code. You can remove projects that are no longer needed.</p>
+      </div>
+      <div v-if="jsonProjects.length > 0" class="bulk-actions">
+        <div class="select-all-container">
+          <input
+            type="checkbox"
+            id="select-all-projects"
+            class="checkbox"
+            :checked="allProjectsSelected"
+            @change="toggleAllProjects"
+          />
+          <label for="select-all-projects">Select All</label>
+        </div>
+        <button class="danger" @click="removeSelectedProjects" style="margin-left: auto" :disabled="selectedProjects.size === 0">
+          Remove from Config
+        </button>
+      </div>
       <div v-if="jsonProjects.length > 0" class="project-list">
         <div v-for="project in jsonProjects" :key="project.path" class="project-item">
+          <input
+            type="checkbox"
+            class="checkbox project-checkbox"
+            :checked="selectedProjects.has(project.path)"
+            @change="toggleProjectCheckbox(project.path)"
+          />
           <div class="project-info">
             <div class="project-name">{{ project.path.split('/').pop() }}</div>
             <div class="project-path">{{ project.path }}</div>
@@ -71,7 +103,7 @@
             </div>
           </div>
           <div class="project-actions">
-            <button @click="removeProject(project.path)">Remove from Config</button>
+            <button class="danger" @click="removeProject(project.path)">Remove from Config</button>
           </div>
         </div>
       </div>
@@ -96,13 +128,19 @@
           />
           <label for="select-all-sessions">Select All</label>
         </div>
-        <button class="danger" @click="cleanSelectedSessions" style="margin-left: auto">
+        <button class="danger" @click="cleanSelectedSessions" style="margin-left: auto" :disabled="selectedSessions.size === 0">
           Move to Trash
         </button>
       </div>
 
       <div v-if="sessions.length > 0" class="project-list">
         <div v-for="session in sessions" :key="session.dir" class="project-item">
+          <input
+            type="checkbox"
+            class="checkbox session-checkbox"
+            :checked="selectedSessions.has(session.dir)"
+            @change="toggleSessionCheckbox(session.dir)"
+          />
           <div class="project-info">
             <div class="project-name">{{ session.dir }}</div>
             <div class="project-path">{{ session.actualPath }}</div>
@@ -116,13 +154,7 @@
             </div>
           </div>
           <div class="project-actions">
-            <input
-              type="checkbox"
-              class="checkbox session-checkbox"
-              :checked="selectedSessions.has(session.dir)"
-              @change="toggleSessionCheckbox(session.dir)"
-            />
-            <button @click="cleanSession(session.dir)">Clean</button>
+            <button class="danger" @click="cleanSession(session.dir)">Clean</button>
           </div>
         </div>
       </div>
@@ -147,13 +179,19 @@
           />
           <label for="select-all-file-history">Select All</label>
         </div>
-        <button class="danger" @click="cleanSelectedFileHistory" style="margin-left: auto">
+        <button class="danger" @click="cleanSelectedFileHistory" style="margin-left: auto" :disabled="selectedFileHistory.size === 0">
           Move to Trash
         </button>
       </div>
 
       <div v-if="fileHistory.length > 0" class="project-list">
         <div v-for="history in fileHistory" :key="history.dir" class="project-item">
+          <input
+            type="checkbox"
+            class="checkbox file-history-checkbox"
+            :checked="selectedFileHistory.has(history.dir)"
+            @change="toggleFileHistoryCheckbox(history.dir)"
+          />
           <div class="project-info">
             <div class="project-name">{{ history.dir }}</div>
             <div v-if="history.sessionEnvs && history.sessionEnvs.length > 0" class="session-envs-list">
@@ -166,13 +204,7 @@
             </div>
           </div>
           <div class="project-actions">
-            <input
-              type="checkbox"
-              class="checkbox file-history-checkbox"
-              :checked="selectedFileHistory.has(history.dir)"
-              @change="toggleFileHistoryCheckbox(history.dir)"
-            />
-            <button @click="cleanFileHistory(history.dir)">Clean</button>
+            <button class="danger" @click="cleanFileHistory(history.dir)">Clean</button>
           </div>
         </div>
       </div>
@@ -197,13 +229,19 @@
           />
           <label for="select-all-orphaned-file-history">Select All</label>
         </div>
-        <button class="danger" @click="cleanSelectedOrphanedFileHistory" style="margin-left: auto">
+        <button class="danger" @click="cleanSelectedOrphanedFileHistory" style="margin-left: auto" :disabled="selectedOrphanedFileHistory.size === 0">
           Move to Trash
         </button>
       </div>
 
       <div v-if="orphanedFileHistory.length > 0" class="project-list">
         <div v-for="history in orphanedFileHistory" :key="history.dir" class="project-item">
+          <input
+            type="checkbox"
+            class="checkbox orphaned-file-history-checkbox"
+            :checked="selectedOrphanedFileHistory.has(history.dir)"
+            @change="toggleOrphanedFileHistoryCheckbox(history.dir)"
+          />
           <div class="project-info">
             <div class="project-name">{{ history.dir }}</div>
             <div v-if="history.sessionEnvs && history.sessionEnvs.length > 0" class="session-envs-list">
@@ -217,12 +255,6 @@
             </div>
           </div>
           <div class="project-actions">
-            <input
-              type="checkbox"
-              class="checkbox orphaned-file-history-checkbox"
-              :checked="selectedOrphanedFileHistory.has(history.dir)"
-              @change="toggleOrphanedFileHistoryCheckbox(history.dir)"
-            />
             <button class="danger" @click="cleanOrphanedFileHistory(history.dir)">Clean</button>
           </div>
         </div>
@@ -235,6 +267,9 @@
 
     <!-- Orphaned Tab -->
     <div v-if="activeTab === 'orphaned'" class="tab-content active">
+      <div class="info-note">
+        <p><strong>Orphaned Projects:</strong> Project folders that exist on disk but are not configured in your .claude.json file. These can be safely moved to trash if you no longer need them.</p>
+      </div>
       <div class="bulk-actions">
         <div class="select-all-container">
           <input
@@ -246,13 +281,19 @@
           />
           <label for="select-all-orphaned">Select All</label>
         </div>
-        <button class="danger" @click="deleteSelectedOrphaned" style="margin-left: auto">
+        <button class="danger" @click="deleteSelectedOrphaned" style="margin-left: auto" :disabled="selectedOrphaned.size === 0">
           Move to Trash
         </button>
       </div>
 
       <div v-if="orphaned.length > 0" class="project-list">
         <div v-for="orphan in orphaned" :key="orphan.dir" class="project-item">
+          <input
+            type="checkbox"
+            class="checkbox orphaned-checkbox"
+            :checked="selectedOrphaned.has(orphan.dir)"
+            @change="toggleOrphanedCheckbox(orphan.dir)"
+          />
           <div class="project-info">
             <div class="project-name">{{ orphan.dir }}</div>
             <div class="project-path">{{ orphan.actualPath }}</div>
@@ -267,12 +308,6 @@
             </div>
           </div>
           <div class="project-actions">
-            <input
-              type="checkbox"
-              class="checkbox orphaned-checkbox"
-              :checked="selectedOrphaned.has(orphan.dir)"
-              @change="toggleOrphanedCheckbox(orphan.dir)"
-            />
             <button class="danger" @click="deleteOrphaned(orphan.dir)">Delete</button>
           </div>
         </div>
@@ -299,13 +334,19 @@
           />
           <label for="select-all-debug">Select All</label>
         </div>
-        <button class="danger" @click="cleanSelectedDebugFiles" style="margin-left: auto">
+        <button class="danger" @click="cleanSelectedDebugFiles" style="margin-left: auto" :disabled="selectedDebugFiles.size === 0">
           Move to Trash
         </button>
       </div>
 
       <div v-if="debugFiles.length > 0" class="project-list">
         <div v-for="debug in debugFiles" :key="debug.filename" class="project-item">
+          <input
+            type="checkbox"
+            class="checkbox debug-checkbox"
+            :checked="selectedDebugFiles.has(debug.filename)"
+            @change="toggleDebugFileCheckbox(debug.filename)"
+          />
           <div class="project-info">
             <div class="project-name">{{ debug.filename }}</div>
             <div class="project-meta">
@@ -315,12 +356,6 @@
             </div>
           </div>
           <div class="project-actions">
-            <input
-              type="checkbox"
-              class="checkbox debug-checkbox"
-              :checked="selectedDebugFiles.has(debug.filename)"
-              @change="toggleDebugFileCheckbox(debug.filename)"
-            />
             <button class="danger" @click="cleanDebugFile(debug.filename)">Remove</button>
           </div>
         </div>
@@ -346,13 +381,19 @@
           />
           <label for="select-all-orphaned-debug">Select All</label>
         </div>
-        <button class="danger" @click="cleanSelectedOrphanedDebugFiles" style="margin-left: auto">
+        <button class="danger" @click="cleanSelectedOrphanedDebugFiles" style="margin-left: auto" :disabled="selectedOrphanedDebugFiles.size === 0">
           Move to Trash
         </button>
       </div>
 
       <div v-if="orphanedDebugFiles.length > 0" class="project-list">
         <div v-for="debug in orphanedDebugFiles" :key="debug.filename" class="project-item">
+          <input
+            type="checkbox"
+            class="checkbox orphaned-debug-checkbox"
+            :checked="selectedOrphanedDebugFiles.has(debug.filename)"
+            @change="toggleOrphanedDebugFileCheckbox(debug.filename)"
+          />
           <div class="project-info">
             <div class="project-name">{{ debug.filename }}</div>
             <div class="project-meta">
@@ -363,12 +404,6 @@
             </div>
           </div>
           <div class="project-actions">
-            <input
-              type="checkbox"
-              class="checkbox orphaned-debug-checkbox"
-              :checked="selectedOrphanedDebugFiles.has(debug.filename)"
-              @change="toggleOrphanedDebugFileCheckbox(debug.filename)"
-            />
             <button class="danger" @click="cleanOrphanedDebugFile(debug.filename)">Clean</button>
           </div>
         </div>
@@ -395,13 +430,19 @@
           />
           <label for="select-all-todos">Select All</label>
         </div>
-        <button class="danger" @click="cleanSelectedTodos" style="margin-left: auto">
+        <button class="danger" @click="cleanSelectedTodos" style="margin-left: auto" :disabled="selectedTodos.size === 0">
           Move to Trash
         </button>
       </div>
 
       <div v-if="todosFiles.length > 0" class="project-list">
         <div v-for="todo in todosFiles" :key="todo.filename" class="project-item">
+          <input
+            type="checkbox"
+            class="checkbox todos-checkbox"
+            :checked="selectedTodos.has(todo.filename)"
+            @change="toggleTodosCheckbox(todo.filename)"
+          />
           <div class="project-info">
             <div class="project-name">{{ todo.filename }}</div>
             <div class="project-meta">
@@ -411,12 +452,6 @@
             </div>
           </div>
           <div class="project-actions">
-            <input
-              type="checkbox"
-              class="checkbox todos-checkbox"
-              :checked="selectedTodos.has(todo.filename)"
-              @change="toggleTodosCheckbox(todo.filename)"
-            />
             <button class="danger" @click="cleanTodosFile(todo.filename)">Remove</button>
           </div>
         </div>
@@ -442,13 +477,19 @@
           />
           <label for="select-all-orphaned-todos">Select All</label>
         </div>
-        <button class="danger" @click="cleanSelectedOrphanedTodos" style="margin-left: auto">
+        <button class="danger" @click="cleanSelectedOrphanedTodos" style="margin-left: auto" :disabled="selectedOrphanedTodos.size === 0">
           Move to Trash
         </button>
       </div>
 
       <div v-if="orphanedTodosFiles.length > 0" class="project-list">
         <div v-for="todo in orphanedTodosFiles" :key="todo.filename" class="project-item">
+          <input
+            type="checkbox"
+            class="checkbox orphaned-todos-checkbox"
+            :checked="selectedOrphanedTodos.has(todo.filename)"
+            @change="toggleOrphanedTodosCheckbox(todo.filename)"
+          />
           <div class="project-info">
             <div class="project-name">{{ todo.filename }}</div>
             <div class="project-meta">
@@ -459,12 +500,6 @@
             </div>
           </div>
           <div class="project-actions">
-            <input
-              type="checkbox"
-              class="checkbox orphaned-todos-checkbox"
-              :checked="selectedOrphanedTodos.has(todo.filename)"
-              @change="toggleOrphanedTodosCheckbox(todo.filename)"
-            />
             <button class="danger" @click="cleanOrphanedTodosFile(todo.filename)">Clean</button>
           </div>
         </div>
@@ -477,6 +512,9 @@
 
     <!-- Backups Tab -->
     <div v-if="activeTab === 'backups'" class="tab-content active">
+      <div class="info-note">
+        <p><strong>Configuration Backups:</strong> Automatic backups of your .claude.json configuration file created before major operations. You can safely remove old backups to free up disk space.</p>
+      </div>
       <div class="bulk-actions">
         <div class="select-all-container">
           <input
@@ -488,12 +526,18 @@
           />
           <label for="select-all-backups">Select All</label>
         </div>
-        <button class="danger" @click="removeSelectedBackups" style="margin-left: auto">
+        <button class="danger" @click="removeSelectedBackups" style="margin-left: auto" :disabled="selectedBackups.size === 0">
           Move to Trash
         </button>
       </div>
       <div v-if="backups.length > 0" class="project-list">
         <div v-for="backup in backups" :key="backup.filename" class="project-item">
+          <input
+            type="checkbox"
+            class="checkbox backup-checkbox"
+            :checked="selectedBackups.has(backup.filename)"
+            @change="toggleBackupCheckbox(backup.filename)"
+          />
           <div class="project-info">
             <div class="project-name">{{ backup.filename }}</div>
             <div class="project-meta">
@@ -503,12 +547,6 @@
             </div>
           </div>
           <div class="project-actions">
-            <input
-              type="checkbox"
-              class="checkbox backup-checkbox"
-              :checked="selectedBackups.has(backup.filename)"
-              @change="toggleBackupCheckbox(backup.filename)"
-            />
             <button @click="viewBackup(backup)">View</button>
             <button class="primary" @click="restoreBackup(backup)">Restore</button>
             <button class="danger" @click="removeBackup(backup)">Remove</button>
@@ -579,16 +617,18 @@
       </div>
     </div>
 
-    <!-- Confirmation Dialog -->
-    <div v-if="showConfirmation" class="confirmation-dialog show">
-      <div class="dialog-content">
-        <h2>{{ confirmationTitle }}</h2>
-        <p>{{ confirmationMessage }}</p>
-        <div class="dialog-actions">
-          <button @click="cancelConfirmation">Cancel</button>
-          <button class="danger" @click="confirmAction">Confirm</button>
+      <!-- Confirmation Dialog -->
+      <div v-if="showConfirmation" class="confirmation-dialog show">
+        <div class="dialog-content">
+          <h2>{{ confirmationTitle }}</h2>
+          <p>{{ confirmationMessage }}</p>
+          <div class="dialog-actions">
+            <button @click="cancelConfirmation">Cancel</button>
+            <button class="danger" @click="confirmAction">Confirm</button>
+          </div>
         </div>
       </div>
+      </main>
     </div>
   </div>
 </template>
@@ -609,6 +649,7 @@ const todosFiles = ref([]);
 const orphanedTodosFiles = ref([]);
 const backups = ref([]);
 const stats = ref({});
+const selectedProjects = ref(new Set());
 const selectedSessions = ref(new Set());
 const selectedOrphaned = ref(new Set());
 const selectedFileHistory = ref(new Set());
@@ -639,6 +680,10 @@ const tabs = [
 ];
 
 // Computed properties
+const allProjectsSelected = computed(() => {
+  return jsonProjects.value.length > 0 && jsonProjects.value.every(p => selectedProjects.value.has(p.path));
+});
+
 const allSessionsSelected = computed(() => {
   return sessions.value.length > 0 && sessions.value.every(s => selectedSessions.value.has(s.dir));
 });
@@ -748,6 +793,8 @@ function getTabCount(tabId) {
 
 function getTabSelected(tabId) {
   switch (tabId) {
+    case 'json-projects':
+      return selectedProjects.value.size > 0 ? selectedProjects.value.size : null;
     case 'sessions':
       return selectedSessions.value.size > 0 ? selectedSessions.value.size : null;
     case 'file-history':
@@ -770,6 +817,15 @@ function getTabSelected(tabId) {
 }
 
 // Tab navigation
+function toggleProjectCheckbox(path) {
+  if (selectedProjects.value.has(path)) {
+    selectedProjects.value.delete(path);
+  } else {
+    selectedProjects.value.add(path);
+  }
+  selectedProjects.value = new Set(selectedProjects.value);
+}
+
 function toggleSessionCheckbox(dir) {
   if (selectedSessions.value.has(dir)) {
     selectedSessions.value.delete(dir);
@@ -795,6 +851,15 @@ function toggleFileHistoryCheckbox(dir) {
     selectedFileHistory.value.add(dir);
   }
   selectedFileHistory.value = new Set(selectedFileHistory.value);
+}
+
+function toggleAllProjects() {
+  if (allProjectsSelected.value) {
+    selectedProjects.value.clear();
+  } else {
+    jsonProjects.value.forEach(p => selectedProjects.value.add(p.path));
+  }
+  selectedProjects.value = new Set(selectedProjects.value);
 }
 
 function toggleAllSessions() {
@@ -1237,6 +1302,40 @@ async function removeProject(projectPath) {
   );
 }
 
+async function removeSelectedProjects() {
+  if (selectedProjects.value.size === 0) {
+    showError('No projects selected');
+    return;
+  }
+
+  const projectPaths = Array.from(selectedProjects.value);
+  showConfirmationDialog(
+    'Remove Projects from Configuration',
+    `Remove ${projectPaths.length} project(s) from .claude.json?`,
+    async () => {
+      try {
+        for (const projectPath of projectPaths) {
+          const res = await fetch('/api/remove/project', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectPath })
+          });
+          const data = await res.json();
+          if (!data.success) {
+            showError(data.message || 'Failed to remove project: ' + projectPath);
+            return;
+          }
+        }
+        showSuccess(`${projectPaths.length} project(s) removed from configuration`);
+        selectedProjects.value.clear();
+        loadData();
+      } catch (error) {
+        showError('Error: ' + error.message);
+      }
+    }
+  );
+}
+
 function viewBackup(backup) {
   showConfirmationDialog(
     'Backup Info',
@@ -1595,20 +1694,27 @@ onMounted(() => {
   background: #0f0f0f;
   color: #e0e0e0;
   min-height: 100vh;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  padding-top: 80px;
 }
 
 .header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
   border-bottom: 1px solid #333;
-  padding-bottom: 20px;
-  max-width: 1400px;
-  margin-left: auto;
-  margin-right: auto;
+  padding: 20px;
   gap: 20px;
+  flex-shrink: 0;
+  background: #0a0a0a;
+  height: 80px;
+  box-sizing: border-box;
 }
 
 .header-left {
@@ -1649,6 +1755,7 @@ h1 {
 .stat-item {
   display: flex;
   flex-direction: column;
+  align-items: center;
 }
 
 .stat-label {
@@ -1656,6 +1763,7 @@ h1 {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  text-align: center;
 }
 
 .stat-value {
@@ -1663,42 +1771,106 @@ h1 {
   font-weight: 600;
   color: #4a9eff;
   margin-top: 5px;
+  text-align: center;
+}
+
+.main-container {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  margin-left: 220px;
+}
+
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 80px;
+  width: 220px;
+  height: calc(100vh - 80px);
+  border-right: 1px solid #333;
+  overflow-y: auto;
+  flex-shrink: 0;
+  background: #0a0a0a;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid #333;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.github-icon {
+  width: 28px;
+  height: 28px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  cursor: pointer;
+}
+
+.github-icon:hover {
+  opacity: 1;
+}
+
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .tabs {
   display: flex;
+  flex-direction: column;
   gap: 0;
-  border-bottom: 1px solid #333;
-  margin-bottom: 20px;
-  max-width: 1400px;
-  margin-left: auto;
-  margin-right: auto;
-  overflow-x: auto;
+  padding: 0;
 }
 
 .tab-button {
-  padding: 12px 24px;
+  padding: 12px 16px;
   background: none;
   border: none;
+  border-left: 3px solid transparent;
   color: #999;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  border-bottom: 2px solid transparent;
   transition: all 0.2s;
-  white-space: nowrap;
+  text-align: left;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 6px;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .tab-button:hover {
   color: #e0e0e0;
+  background: #1a1a1a;
 }
 
 .tab-button.active {
   color: #4a9eff;
-  border-bottom-color: #4a9eff;
+  border-left-color: #4a9eff;
+  background: #1a1a1a;
+}
+
+.tab-label {
+  display: block;
+  flex: 1;
+}
+
+.tab-info {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  align-items: center;
 }
 
 .tab-count {
@@ -1707,7 +1879,7 @@ h1 {
   color: #999;
   padding: 2px 6px;
   border-radius: 3px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -1718,20 +1890,22 @@ h1 {
 
 .tab-selected {
   color: #6dd86d;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
 }
 
 .tab-content {
-  max-width: 1400px;
-  margin-left: auto;
-  margin-right: auto;
+  width: 100%;
+  margin-bottom: 40px;
 }
 
 .project-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .project-item {
@@ -1740,8 +1914,8 @@ h1 {
   border-radius: 6px;
   padding: 16px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 12px;
   transition: all 0.2s;
 }
 
@@ -1831,11 +2005,13 @@ h1 {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .checkbox {
   width: 20px;
   height: 20px;
+  flex-shrink: 0;
   cursor: pointer;
   accent-color: #4a9eff;
 }
@@ -1879,6 +2055,13 @@ button.danger:hover {
   border-color: #e87d7d;
 }
 
+button.danger:disabled {
+  background: #888888;
+  border-color: #888888;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .bulk-actions {
   display: flex;
   gap: 10px;
@@ -1887,6 +2070,9 @@ button.danger:hover {
   background: #1a1a1a;
   border-radius: 6px;
   border: 1px solid #333;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .select-all-container {
@@ -2044,10 +2230,11 @@ button.danger:hover {
   background: #1a1a1a;
   border-top: 1px solid #333;
   padding: 30px 20px;
-  margin-top: 40px;
+  margin-top: auto;
   max-width: 1400px;
   margin-left: auto;
   margin-right: auto;
+  flex-shrink: 0;
 }
 
 .legend h3 {
