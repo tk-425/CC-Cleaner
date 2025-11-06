@@ -50,6 +50,7 @@
             </span>
             <div class="tab-info">
               <span :class="['tab-count', { 'tab-count-highlight': shouldHighlightTab(tab.id) }]">{{ getTabCount(tab.id) }}</span>
+              <span v-if="tab.id === 'json-projects' && getFolderNotFoundCount() > 0" class="tab-count tab-count-highlight">{{ getFolderNotFoundCount() }}</span>
               <span v-if="getTabSelected(tab.id)" class="tab-selected">{{ getTabSelected(tab.id) }}</span>
             </div>
           </button>
@@ -833,6 +834,10 @@ function getTabSelected(tabId) {
     default:
       return null;
   }
+}
+
+function getFolderNotFoundCount() {
+  return jsonProjects.value.filter(p => !p.exists).length;
 }
 
 function shouldHighlightTab(tabId) {
